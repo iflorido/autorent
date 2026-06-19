@@ -11,6 +11,8 @@ dist/
 .venv/
 venv/
 env/
+.tar
+*.tar
 
 # === Django ===
 *.log
