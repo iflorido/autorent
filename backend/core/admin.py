@@ -76,35 +76,20 @@ class EmailConfigAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def change_view(self, request, object_id, form_url="", extra_context=None):
-        self._current_request = request
-        return super().change_view(request, object_id, form_url, extra_context)
-
     def bloque_prueba_correo(self, obj):
         if not obj or not obj.pk:
             return "— Guarda la configuración primero para poder enviar una prueba."
 
-        from django.middleware.csrf import get_token
-
-        request = getattr(self, "_current_request", None)
-        csrf_token = get_token(request) if request else ""
+        # Enlace (no form anidado: dentro del form del admin un <form>
+        # interno se aplana y acabaría guardando en vez de enviar la prueba).
         url = reverse("admin:core_email_prueba", args=[obj.pk])
-
         return format_html(
-            '<div style="background:#f0f9ff;border:1px solid #bae6fd;'
-            'border-left:4px solid #0891b3;border-radius:8px;padding:16px 20px;max-width:560px;">'
-            '<form method="post" action="{}" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">'
-            '<input type="hidden" name="csrfmiddlewaretoken" value="{}">'
-            '<div style="flex:1;min-width:220px;">'
-            '<label style="display:block;font-size:.72rem;font-weight:700;color:#374151;'
-            'margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Email destino</label>'
-            '<input type="email" name="email_destino" placeholder="tu@email.com" required '
-            'style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;'
-            'font-size:.85rem;box-sizing:border-box;"></div>'
-            '<button type="submit" style="padding:8px 18px;background:#0891b3;color:#fff;border:none;'
-            'border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">'
-            'Enviar prueba</button></form></div>',
-            url, csrf_token,
+            '<a href="{}" style="display:inline-block;padding:9px 20px;background:#0891b3;'
+            'color:#fff;border-radius:6px;font-size:.85rem;font-weight:600;text-decoration:none;">'
+            'Abrir página de prueba de envío</a>'
+            '<p style="margin:8px 0 0;font-size:.78rem;color:#6b7280;">'
+            'Guarda primero los cambios; luego abre la página de prueba e indica el email destino.</p>',
+            url,
         )
     bloque_prueba_correo.short_description = "Enviar correo de prueba"
 
@@ -132,8 +117,19 @@ class EmailConfigAdmin(admin.ModelAdmin):
         obj = EmailConfig.objects.get(pk=email_id)
         url_cambio = reverse("admin:core_emailconfig_change", args=[email_id])
 
+        # GET: mostrar una página propia con su formulario (no anidado en el admin).
         if request.method != "POST":
-            return HttpResponseRedirect(url_cambio)
+            from django.middleware.csrf import get_token
+            from django.shortcuts import render
+
+            ctx = {
+                **self.admin_site.each_context(request),
+                "title": "Prueba de envío SMTP",
+                "obj": obj,
+                "url_cambio": url_cambio,
+                "csrf_token": get_token(request),
+            }
+            return render(request, "admin/core/email_prueba.html", ctx)
 
         email_destino = request.POST.get("email_destino", "").strip()
         try:

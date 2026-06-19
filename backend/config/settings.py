@@ -190,7 +190,7 @@ JAZZMIN_SETTINGS = {
     "site_brand": "AutoRent",
     "welcome_sign": "Panel de gestión AutoRent",
     "copyright": "AutomaWorks",
-    "search_model": ["autorent.Reserva", "autorent.Vehiculo", "autorent.Cliente"],
+    "search_model": ["autorent.Vehiculo"],
     "order_with_respect_to": ["core", "autorent"],
     "icons": {
         "auth.User": "fas fa-user",
@@ -201,5 +201,4 @@ JAZZMIN_SETTINGS = {
 JAZZMIN_UI_TWEAKS = {
     "navbar_small_text": False,
     "theme": "flatly",
-    "dark_mode_theme": "darkly",
 }
