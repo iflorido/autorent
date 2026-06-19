@@ -1,0 +1,81 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: autorent-backend:latest
+    container_name: autorent_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Estas variables las define Plesk en el contenedor.
+      # En local se toman del .env (env_file de arriba).
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      # Volúmenes mapeados al VPS para backups (fotos, documentos, estáticos)
+      - ./data/media:/app/media
+      - ./data/static:/app/staticfiles
+    ports:
+      - "8072:8072"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: autorent_redis
+    restart: unless-stopped
+    volumes:
+      - ./data/redis:/data
+    # No exponemos el puerto al exterior: solo lo usa la red interna
+    expose:
+      - "6379"
+
+  # === Servicios para fases siguientes (descomentar cuando toque) ===
+
+  # celery:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   image: autorent-backend:latest
+  #   container_name: autorent_celery
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   command: celery -A config worker -l info
+  #   volumes:
+  #     - ./data/media:/app/media
+  #   depends_on:
+  #     - redis
+
+  # api:
+  #   build:
+  #     context: ./api
+  #     dockerfile: Dockerfile
+  #   image: autorent-api:latest
+  #   container_name: autorent_api
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "8001:8001"
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   image: autorent-frontend:latest
+  #   container_name: autorent_frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - backend
