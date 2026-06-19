@@ -1,0 +1,35 @@
+# === AutoRent backend — Django 5.1 / Python 3.12 ===
+
+# Core
+Django==5.1.15
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.4.0
+django-filter==24.3
+
+# Admin
+django-jazzmin==3.0.1
+
+# DB / cache
+psycopg2-binary==2.9.10
+redis==5.2.1
+
+# Tareas async (emails de confirmación, jobs GPS más adelante)
+celery==5.4.0
+django-celery-beat==2.7.0
+
+# Imágenes (fotos de vehículos, galería)
+Pillow==11.0.0
+
+# Utilidades
+python-dotenv==1.0.1
+python-dateutil==2.9.0.post0
+
+# Generación de facturas PDF
+reportlab==4.2.5
+
+# Servidor producción
+gunicorn==23.0.0
+
+# Static files en contenedor
+whitenoise==6.8.2
