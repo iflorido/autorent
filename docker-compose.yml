@@ -46,7 +46,7 @@ services:
     container_name: autorent_frontend
     restart: unless-stopped
     ports:
-      - "8074:80"
+      - "8074:8074"
     depends_on:
       - backend
 
