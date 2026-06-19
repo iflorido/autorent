@@ -16,6 +16,9 @@ done
 echo "==> Aplicando migraciones ..."
 python manage.py migrate --noinput
 
+echo "==> Asegurando superusuario (si hay variables) ..."
+python manage.py ensure_superuser
+
 echo "==> Recolectando estáticos ..."
 python manage.py collectstatic --noinput
 
