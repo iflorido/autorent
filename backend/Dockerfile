@@ -27,6 +27,9 @@ COPY . .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# scripts de arranque de Celery (se usan sobrescribiendo el comando en Plesk)
+RUN chmod +x /app/celery-worker.sh /app/celery-beat.sh
+
 EXPOSE 8072
 
 ENTRYPOINT ["/entrypoint.sh"]

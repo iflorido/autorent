@@ -116,6 +116,8 @@ CACHES = {
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
 CELERY_TIMEZONE = "Europe/Madrid"
+# El scheduler lee las tareas periódicas de la BD (gestionables desde el admin).
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 # === DRF + JWT ===
@@ -191,10 +193,38 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "Panel de gestión AutoRent",
     "copyright": "AutomaWorks",
     "search_model": ["autorent.Vehiculo"],
-    "order_with_respect_to": ["core", "autorent"],
+    # Orden de las apps en el menú lateral.
+    "order_with_respect_to": [
+        "autorent",
+        "autorent.Vehiculo",
+        "autorent.Extra",
+        "autorent.Mantenimiento",
+        "core",
+        "core.SiteConfig",
+        "core.EmailConfig",
+        "django_celery_beat",
+        "django_celery_beat.PeriodicTask",
+        "django_celery_beat.IntervalSchedule",
+        "django_celery_beat.CrontabSchedule",
+        "django_celery_beat.SolarSchedule",
+        "django_celery_beat.ClockedSchedule",
+    ],
     "icons": {
         "auth.User": "fas fa-user",
         "auth.Group": "fas fa-users",
+        # autorent
+        "autorent.Vehiculo": "fas fa-car",
+        "autorent.Extra": "fas fa-plus-circle",
+        "autorent.Mantenimiento": "fas fa-wrench",
+        # core
+        "core.SiteConfig": "fas fa-building",
+        "core.EmailConfig": "fas fa-envelope",
+        # django_celery_beat
+        "django_celery_beat.PeriodicTask": "fas fa-tasks",
+        "django_celery_beat.IntervalSchedule": "fas fa-hourglass-half",
+        "django_celery_beat.CrontabSchedule": "fas fa-clock",
+        "django_celery_beat.SolarSchedule": "fas fa-sun",
+        "django_celery_beat.ClockedSchedule": "fas fa-stopwatch",
     },
     "show_ui_builder": False,
 }

@@ -26,6 +26,46 @@ services:
     depends_on:
       - redis
 
+  celery:
+    image: autorent-backend:latest
+    container_name: autorent_celery
+    restart: unless-stopped
+    command: /app/celery-worker.sh
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - ./data/media:/app/media
+    depends_on:
+      - redis
+      - backend
+
+  celery-beat:
+    image: autorent-backend:latest
+    container_name: autorent_celery_beat
+    restart: unless-stopped
+    command: /app/celery-beat.sh
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - redis
+      - backend
+
   api:
     build:
       context: ./api
@@ -56,21 +96,5 @@ services:
     restart: unless-stopped
     volumes:
       - ./data/redis:/data
-    expose:
-      - "6379"
-
-  # === Para la fase de tareas async (descomentar cuando toque) ===
-  # celery:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   image: autorent-backend:latest
-  #   container_name: autorent_celery
-  #   restart: unless-stopped
-  #   env_file:
-  #     - .env
-  #   command: celery -A config worker -l info
-  #   volumes:
-  #     - ./data/media:/app/media
-  #   depends_on:
-  #     - redis
+    ports:
+      - "6379:6379"
