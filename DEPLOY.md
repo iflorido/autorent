@@ -124,3 +124,38 @@ Notas:
    rutas de los volúmenes y, si hace falta, los puertos publicados).
 5. Los colores y datos de empresa se ajustan desde `core.SiteConfig` y las
    variables CSS del frontend, sin recompilar.
+
+## Redis y Celery (contenedores separados en Plesk)
+
+Tres contenedores adicionales:
+
+- **redis**: imagen `redis:7-alpine`. Comando de inicio con contraseña:
+  ```
+  redis-server --requirepass TU_PASSWORD_REDIS
+  ```
+- **celery**: imagen del backend (`ghcr.io/iflorido/autorent-backend:latest`),
+  comando de inicio `/app/celery-worker.sh`. Mismas variables que el backend.
+- **celery-beat**: misma imagen del backend, comando `/app/celery-beat.sh`.
+
+### Variables Redis/Celery (en backend, celery y celery-beat)
+
+Como los contenedores en Plesk no comparten red, se conecta por IP del VPS.
+La contraseña va en la propia URL (usuario vacío -> `redis://:PASSWORD@...`):
+
+```
+REDIS_URL=redis://:TU_PASSWORD_REDIS@217.154.183.21:6379/0
+CELERY_BROKER_URL=redis://:TU_PASSWORD_REDIS@217.154.183.21:6379/0
+CELERY_RESULT_BACKEND=redis://:TU_PASSWORD_REDIS@217.154.183.21:6379/1
+```
+
+### Seguridad de Redis
+
+- **Contraseña (requirepass)**: imprescindible. Cierra Redis aunque el puerto
+  6379 quede accesible. Generar con:
+  `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+- **Firewall**: Docker puentea iptables/UFW al publicar puertos, así que una
+  regla de firewall de Plesk sobre el 6379 puede no surtir efecto. La forma
+  efectiva de no exponer Redis es publicarlo solo en local
+  (`127.0.0.1:6379:6379`) y que los contenedores usen el gateway Docker
+  (`172.17.0.1`) en las variables. Con la contraseña puesta, esta capa es
+  opcional pero recomendable.
