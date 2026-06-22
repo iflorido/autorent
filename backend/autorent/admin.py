@@ -20,7 +20,7 @@ from .models import (
 
 class FotoVehiculoInline(admin.TabularInline):
     model = FotoVehiculo
-    extra = 1
+    extra = 5  # 5 filas vacías para subir varias fotos de una vez
     fields = ("imagen", "miniatura", "principal", "orden", "titulo")
     readonly_fields = ("miniatura",)
 
