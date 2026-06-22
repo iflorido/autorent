@@ -1,12 +1,29 @@
 import { Link } from "react-router-dom";
 import type { VehiculoList } from "@/types";
 
-export default function VehiculoCard({ v }: { v: VehiculoList }) {
+interface Props {
+  v: VehiculoList;
+  fechaInicio?: string;
+  fechaFin?: string;
+}
+
+export default function VehiculoCard({ v, fechaInicio, fechaFin }: Props) {
+  // Propaga las fechas seleccionadas a la ficha del vehículo.
+  const query = new URLSearchParams();
+  if (fechaInicio) query.set("fecha_inicio", fechaInicio);
+  if (fechaFin) query.set("fecha_fin", fechaFin);
+  const qs = query.toString();
+  const to = `/vehiculo/${v.id}${qs ? `?${qs}` : ""}`;
+
   return (
-    <div className="bg-bg-2 border border-border rounded-xl overflow-hidden flex flex-col">
+    <div className="bg-bg-2 border border-border rounded-xl overflow-hidden flex flex-col group">
       <div className="h-44 bg-accent-dim flex items-center justify-center overflow-hidden">
         {v.foto_principal ? (
-          <img src={v.foto_principal} alt={v.nombre} className="w-full h-full object-cover" />
+          <img
+            src={v.foto_principal}
+            alt={v.nombre}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
         ) : (
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
             <path d="M3 13h18v4H3zM5 13V8h11l3 5" />
@@ -25,13 +42,13 @@ export default function VehiculoCard({ v }: { v: VehiculoList }) {
         )}
         <div className="flex gap-2 mt-auto pt-2">
           <Link
-            to={`/vehiculo/${v.id}`}
+            to={to}
             className="flex-1 text-center text-[13px] py-2 border border-border-2 rounded-lg hover:bg-surface-2 transition"
           >
             Más información
           </Link>
           <Link
-            to={`/vehiculo/${v.id}`}
+            to={to}
             className="flex-1 text-center text-[13px] py-2 rounded-lg bg-accent text-white hover:opacity-90 transition"
           >
             Reservar

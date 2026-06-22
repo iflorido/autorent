@@ -55,53 +55,56 @@ Estas directivas reparten el dominio entre los contenedores. Ajusta el host:
 si Plesk corre los contenedores en el mismo host, suele ser `127.0.0.1`.
 
 ```nginx
-# --- Backend Django: API REST ---
-location /api/ {
-    proxy_pass http://127.0.0.1:8072;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+# ==========================================
+# 1. ESCUDOS DEL BACKEND (Prioridad Absoluta)
+# ==========================================
+
+location ^~ /api/ {
+	proxy_pass http://127.0.0.1:8072;
+	proxy_set_header Host $host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto $scheme;
 }
 
-# --- Backend Django: admin (Jazzmin) ---
-location /admin/ {
-    proxy_pass http://127.0.0.1:8072;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+location ^~ /admin/ {
+	proxy_pass http://127.0.0.1:8072;
+	proxy_set_header Host $host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto $scheme;
 }
 
-# --- API FastAPI Teltonika ---
-location /gps/ {
-    proxy_pass http://127.0.0.1:8073/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+location ^~ /static/ {
+	proxy_pass http://127.0.0.1:8072;
+	proxy_set_header Host $host;
+	proxy_set_header X-Forwarded-Proto $scheme;
 }
 
-# --- Estáticos del admin Django (servidos desde el volumen) ---
-location /static/ {
-    alias <ruta-en-VPS>/static/;
-    expires 30d;
-    access_log off;
+location ^~ /gps/ {
+	proxy_pass http://127.0.0.1:8073/;
+	proxy_set_header Host $host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto $scheme;
 }
 
-# --- Archivos subidos: fotos de vehículos, documentos ---
-location /media/ {
-    alias <ruta-en-VPS>/media/;
-    expires 7d;
+location ^~ /media/ {
+	alias /var/www/vhosts/automaworks.es/autorent.automaworks.es/data/media/;
+	expires 7d;
+	access_log off;
 }
 
-# --- Frontend (React): todo lo demás ---
-location / {
-    proxy_pass http://127.0.0.1:8074;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+# ==========================================
+# 2. RED DE CAPTURA: FRONTEND REACT
+# ==========================================
+
+location ~ ^/ {
+	proxy_pass http://127.0.0.1:8074;
+	proxy_set_header Host $host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 
