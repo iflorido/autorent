@@ -116,6 +116,9 @@ CACHES = {
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
 CELERY_TIMEZONE = "Europe/Madrid"
+# Mantener el reintento de conexión al broker en el arranque (Celery 6 lo
+# desactiva por defecto; esto conserva el comportamiento actual).
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 # El scheduler lee las tareas periódicas de la BD (gestionables desde el admin).
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
