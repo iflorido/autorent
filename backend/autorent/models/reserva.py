@@ -96,6 +96,15 @@ class Reserva(models.Model):
     fecha_inicio = models.DateField(verbose_name="Fecha de recogida")
     fecha_fin = models.DateField(verbose_name="Fecha de devolución")
 
+    sede_recogida = models.ForeignKey(
+        "core.Sede", on_delete=models.PROTECT, blank=True, null=True,
+        related_name="reservas_recogida", verbose_name="Sede de recogida",
+    )
+    sede_entrega = models.ForeignKey(
+        "core.Sede", on_delete=models.PROTECT, blank=True, null=True,
+        related_name="reservas_entrega", verbose_name="Sede de entrega",
+    )
+
     estado = models.CharField(
         max_length=20, choices=Estado.choices,
         default=Estado.PENDIENTE, verbose_name="Estado",

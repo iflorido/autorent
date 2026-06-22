@@ -110,3 +110,44 @@ class EmailConfig(SingletonModel):
 
     def __str__(self):
         return f"SMTP: {self.email_host}:{self.email_port}"
+
+
+class Sede(models.Model):
+    """Localización física donde se recogen/entregan los vehículos.
+
+    Multi-sede: de momento habrá una, pero el modelo permite varias para
+    que en el futuro se pueda recoger en una sede y entregar en otra.
+    """
+    nombre = models.CharField(max_length=120, verbose_name="Nombre")
+    slug = models.SlugField(max_length=140, unique=True, verbose_name="Slug")
+    activa = models.BooleanField(default=True, verbose_name="Activa")
+
+    # Dirección
+    direccion = models.CharField(max_length=255, blank=True, verbose_name="Dirección")
+    poblacion = models.CharField(max_length=100, blank=True, verbose_name="Población")
+    cp = models.CharField(max_length=10, blank=True, verbose_name="Código postal")
+    provincia = models.CharField(max_length=100, blank=True, verbose_name="Provincia")
+    pais = models.CharField(max_length=60, default="España", verbose_name="País")
+
+    # Geolocalización (para mapa en el frontend)
+    latitud = models.DecimalField(
+        max_digits=9, decimal_places=6, blank=True, null=True, verbose_name="Latitud",
+    )
+    longitud = models.DecimalField(
+        max_digits=9, decimal_places=6, blank=True, null=True, verbose_name="Longitud",
+    )
+
+    # Contacto y horario
+    telefono = models.CharField(max_length=20, blank=True, verbose_name="Teléfono")
+    email = models.EmailField(blank=True, verbose_name="Email")
+    horario = models.TextField(blank=True, verbose_name="Horario", help_text="Texto libre.")
+
+    orden = models.PositiveSmallIntegerField(default=0, verbose_name="Orden")
+
+    class Meta:
+        verbose_name = "Sede"
+        verbose_name_plural = "Sedes"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self):
+        return self.nombre

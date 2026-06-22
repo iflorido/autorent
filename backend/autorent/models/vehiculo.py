@@ -74,6 +74,10 @@ class Vehiculo(models.Model):
         default=True, verbose_name="Activo",
         help_text="Si se desmarca, no aparece en la web ni admite reservas.",
     )
+    sede = models.ForeignKey(
+        "core.Sede", on_delete=models.SET_NULL, blank=True, null=True,
+        related_name="vehiculos", verbose_name="Sede base",
+    )
 
     extras = models.ManyToManyField(
         "autorent.Extra", blank=True, related_name="vehiculos",
@@ -159,6 +163,35 @@ class Vehiculo(models.Model):
             "subtotal_vehiculo": total.quantize(Decimal("0.01")),
             "fianza": self.fianza,
         }
+
+    def esta_disponible(self, fecha_inicio, fecha_fin):
+        """True si el vehículo está libre en [fecha_inicio, fecha_fin).
+
+        No disponible si hay solapamiento con:
+          - un bloqueo manual de fechas, o
+          - una reserva en estado que ocupa el vehículo (no cancelada
+            ni finalizada).
+
+        Dos rangos [a_ini, a_fin) y [b_ini, b_fin) se solapan si
+        a_ini < b_fin y b_ini < a_fin.
+        """
+        if not self.activo:
+            return False
+
+        # Bloqueos manuales (sus fechas son inclusivas: fecha_fin incluida).
+        bloqueos = self.bloqueos.filter(
+            fecha_inicio__lt=fecha_fin, fecha_fin__gte=fecha_inicio,
+        )
+        if bloqueos.exists():
+            return False
+
+        # Reservas que ocupan el vehículo.
+        estados_ocupan = ["pendiente", "documentacion", "confirmada", "activa"]
+        reservas = self.reservas.filter(
+            estado__in=estados_ocupan,
+            fecha_inicio__lt=fecha_fin, fecha_fin__gt=fecha_inicio,
+        )
+        return not reservas.exists()
 
 
 class FotoVehiculo(models.Model):

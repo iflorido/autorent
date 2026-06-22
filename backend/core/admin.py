@@ -13,7 +13,7 @@ from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from .models import EmailConfig, SiteConfig
+from .models import EmailConfig, Sede, SiteConfig
 
 
 @admin.register(SiteConfig)
@@ -174,3 +174,17 @@ class EmailConfigAdmin(admin.ModelAdmin):
             messages.error(request, f"Error al enviar el correo: {exc}")
 
         return HttpResponseRedirect(url_cambio)
+
+
+@admin.register(Sede)
+class SedeAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "poblacion", "provincia", "telefono", "activa", "orden")
+    list_filter = ("activa", "provincia")
+    search_fields = ("nombre", "poblacion", "direccion")
+    prepopulated_fields = {"slug": ("nombre",)}
+    fieldsets = (
+        ("Identificación", {"fields": ("nombre", "slug", "activa", "orden")}),
+        ("Dirección", {"fields": ("direccion", "poblacion", "cp", "provincia", "pais")}),
+        ("Geolocalización", {"fields": ("latitud", "longitud")}),
+        ("Contacto", {"fields": ("telefono", "email", "horario")}),
+    )
