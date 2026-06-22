@@ -15,7 +15,7 @@ from django.urls import include, path
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("core.urls")),
-    # path("api/", include("autorent.urls")),  # se añadirá en la fase de negocio
+    path("api/", include("autorent.urls")),
 ]
 
 if settings.DEBUG:
