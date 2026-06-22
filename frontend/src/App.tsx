@@ -19,6 +19,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="modelos" element={<Placeholder titulo="Modelos" />} />
+          <Route path="vehiculo/:id" element={<Placeholder titulo="Ficha de vehículo" />} />
           <Route path="reservas" element={<Placeholder titulo="Reservas" />} />
           <Route path="contacto" element={<Placeholder titulo="Contacto" />} />
           <Route path="localizaciones" element={<Placeholder titulo="Localizaciones" />} />
