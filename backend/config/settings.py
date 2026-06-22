@@ -137,6 +137,17 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Rate limiting: protege frente a abuso/scraping sin estorbar al usuario.
+    # 'anon' = peticiones sin autenticar (visitantes del catálogo).
+    # 'user' = peticiones autenticadas (admin/portal).
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "120/min",
+        "user": "300/min",
+    },
 }
 
 SIMPLE_JWT = {
