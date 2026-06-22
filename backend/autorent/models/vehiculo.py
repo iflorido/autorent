@@ -95,6 +95,71 @@ class Vehiculo(models.Model):
     def foto_principal(self):
         return self.fotos.filter(principal=True).first() or self.fotos.first()
 
+    # --- Motor de cálculo de precio ---
+
+    def precio_dia_para(self, num_dias):
+        """Devuelve el precio/día base según el rango escalonado que aplique.
+
+        Busca el RangoPrecio cuyo intervalo [dias_min, dias_max] contiene
+        num_dias. dias_max vacío = sin tope. Si no hay rango aplicable,
+        devuelve None (el vehículo no es alquilable para esa duración).
+        """
+        for rango in self.rangos_precio.order_by("dias_min"):
+            if num_dias < rango.dias_min:
+                continue
+            if rango.dias_max is not None and num_dias > rango.dias_max:
+                continue
+            return rango.precio_dia
+        return None
+
+    def temporada_para(self, fecha):
+        """Devuelve la TemporadaPrecio activa en una fecha dada, o None."""
+        return self.temporadas.filter(
+            fecha_inicio__lte=fecha, fecha_fin__gte=fecha
+        ).first()
+
+    def calcular_precio(self, fecha_inicio, fecha_fin):
+        """Calcula el precio del alquiler entre dos fechas (fin no incluido).
+
+        1) Determina el nº de días.
+        2) Toma el precio/día base del rango escalonado.
+        3) Aplica el ajuste de temporada DÍA A DÍA (un día en temporada alta
+           cuesta más que uno fuera de ella), sumando el total.
+
+        Devuelve un dict con el desglose, o None si no es calculable.
+        """
+        from decimal import Decimal
+
+        num_dias = (fecha_fin - fecha_inicio).days
+        if num_dias <= 0:
+            return None
+
+        precio_base = self.precio_dia_para(num_dias)
+        if precio_base is None:
+            return None
+
+        from datetime import timedelta
+
+        total = Decimal("0.00")
+        dia = fecha_inicio
+        while dia < fecha_fin:
+            precio_hoy = precio_base
+            temporada = self.temporada_para(dia)
+            if temporada:
+                if temporada.tipo_ajuste == "multiplicador":
+                    precio_hoy = (precio_base * temporada.valor).quantize(Decimal("0.01"))
+                else:  # precio_fijo
+                    precio_hoy = temporada.valor
+            total += precio_hoy
+            dia += timedelta(days=1)
+
+        return {
+            "num_dias": num_dias,
+            "precio_dia_base": precio_base,
+            "subtotal_vehiculo": total.quantize(Decimal("0.01")),
+            "fianza": self.fianza,
+        }
+
 
 class FotoVehiculo(models.Model):
     vehiculo = models.ForeignKey(

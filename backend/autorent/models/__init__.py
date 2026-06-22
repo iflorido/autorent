@@ -13,8 +13,18 @@ from .vehiculo import (
     TemporadaPrecio,
     Vehiculo,
 )
+from .reserva import (
+    Cancelacion,
+    Cliente,
+    DocumentoReserva,
+    Factura,
+    Pago,
+    Reserva,
+    ReservaExtra,
+)
 
 __all__ = [
+    # vehiculo
     "Vehiculo",
     "FotoVehiculo",
     "RangoPrecio",
@@ -22,4 +32,12 @@ __all__ = [
     "Extra",
     "BloqueoFecha",
     "Mantenimiento",
+    # reserva
+    "Cliente",
+    "Reserva",
+    "ReservaExtra",
+    "DocumentoReserva",
+    "Pago",
+    "Factura",
+    "Cancelacion",
 ]
