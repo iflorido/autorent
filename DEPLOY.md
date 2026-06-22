@@ -159,3 +159,53 @@ CELERY_RESULT_BACKEND=redis://:TU_PASSWORD_REDIS@217.154.183.21:6379/1
   (`127.0.0.1:6379:6379`) y que los contenedores usen el gateway Docker
   (`172.17.0.1`) en las variables. Con la contraseña puesta, esta capa es
   opcional pero recomendable.
+
+## Red Docker para comunicación entre contenedores (autorent_net)
+
+En la red bridge por defecto de Docker los contenedores NO se resuelven por
+nombre, solo por IP (y las IPs cambian al reiniciar). Por eso se usa una red
+personalizada `autorent_net`, donde Docker sí da resolución DNS por nombre:
+así Redis es siempre alcanzable como `autorent-redis`.
+
+### Variables Redis (usando el nombre de contenedor)
+
+En backend, celery y celery-beat:
+
+```
+REDIS_URL=redis://:PASSWORD@autorent-redis:6379/0
+CELERY_BROKER_URL=redis://:PASSWORD@autorent-redis:6379/0
+CELERY_RESULT_BACKEND=redis://:PASSWORD@autorent-redis:6379/1
+```
+
+### Problema: Plesk saca los contenedores de la red al recrearlos
+
+Cada despliegue (cambio de imagen o variables) recrea el contenedor y lo
+desconecta de `autorent_net` (Plesk no gestiona esa red). Solución: el script
+`scripts/ensure-network.sh` reconecta lo que falte. Es idempotente.
+
+### Instalación del script en el VPS
+
+```sh
+# Copiar el script al VPS (ej. a /opt/autorent/)
+mkdir -p /opt/autorent
+cp scripts/ensure-network.sh /opt/autorent/
+chmod +x /opt/autorent/ensure-network.sh
+
+# Ejecutarlo manualmente tras cada despliegue:
+/opt/autorent/ensure-network.sh
+```
+
+### Cron cada 3 minutos (red de seguridad automática)
+
+```sh
+crontab -e
+```
+
+Añadir la línea:
+
+```
+*/3 * * * * /opt/autorent/ensure-network.sh >> /var/log/autorent-network.log 2>&1
+```
+
+Así, aunque un despliegue saque un contenedor de la red, en menos de 3
+minutos el cron lo reconecta solo. El log queda en /var/log/autorent-network.log.
