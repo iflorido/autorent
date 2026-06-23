@@ -12,7 +12,10 @@ Pensados para el frontend React:
 from rest_framework import serializers
 
 from core.models import Sede
-from .models import Extra, FotoVehiculo, RangoPrecio, TemporadaPrecio, Vehiculo
+from .models import (
+    Cliente, Extra, FotoVehiculo, RangoPrecio, Reserva,
+    ReservaExtra, TemporadaPrecio, Vehiculo,
+)
 
 
 class SedeSerializer(serializers.ModelSerializer):
@@ -109,3 +112,78 @@ class VehiculoDetailSerializer(serializers.ModelSerializer):
         if not rangos:
             return None
         return min(r.precio_dia for r in rangos)
+
+
+# ─────────────────────────────────────────────────────────────
+# Serializers de ESCRITURA (creación de reserva desde el asistente)
+# ─────────────────────────────────────────────────────────────
+
+class ClienteEntradaSerializer(serializers.Serializer):
+    """Datos del cliente que llegan del asistente de reserva."""
+    nombre = serializers.CharField(max_length=120)
+    apellidos = serializers.CharField(max_length=160, required=False, allow_blank=True)
+    nif = serializers.CharField(max_length=20)
+    email = serializers.EmailField()
+    telefono = serializers.CharField(max_length=20)
+    fecha_nacimiento = serializers.DateField(required=False, allow_null=True)
+    direccion = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    poblacion = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    cp = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    provincia = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    pais = serializers.CharField(max_length=60, required=False, allow_blank=True)
+    carnet_numero = serializers.CharField(max_length=40, required=False, allow_blank=True)
+    carnet_caducidad = serializers.DateField(required=False, allow_null=True)
+
+
+class ExtraEntradaSerializer(serializers.Serializer):
+    """Un extra seleccionado: id + cantidad."""
+    extra_id = serializers.IntegerField()
+    cantidad = serializers.IntegerField(min_value=1, default=1)
+
+
+class CrearReservaSerializer(serializers.Serializer):
+    """Payload completo del asistente para crear una reserva.
+
+    El precio NO se acepta del cliente: se recalcula en el servidor a partir
+    del vehículo, las fechas y los extras (con su precio congelado del catálogo).
+    """
+    vehiculo_id = serializers.IntegerField()
+    fecha_inicio = serializers.DateField()
+    fecha_fin = serializers.DateField()
+    sede_recogida_id = serializers.IntegerField(required=False, allow_null=True)
+    sede_entrega_id = serializers.IntegerField(required=False, allow_null=True)
+    metodo_pago = serializers.ChoiceField(
+        choices=["transferencia", "tarjeta", "efectivo"], default="transferencia",
+    )
+    cliente = ClienteEntradaSerializer()
+    extras = ExtraEntradaSerializer(many=True, required=False, default=list)
+    acepta_condiciones = serializers.BooleanField()
+
+    def validate_acepta_condiciones(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                "Debes aceptar las Condiciones Generales de Contratación."
+            )
+        return value
+
+    def validate(self, data):
+        if data["fecha_fin"] <= data["fecha_inicio"]:
+            raise serializers.ValidationError(
+                {"fecha_fin": "La fecha de devolución debe ser posterior a la de recogida."}
+            )
+        return data
+
+
+class ReservaCreadaSerializer(serializers.ModelSerializer):
+    """Respuesta tras crear la reserva (resumen para el frontend)."""
+    vehiculo_nombre = serializers.CharField(source="vehiculo.nombre", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+
+    class Meta:
+        model = Reserva
+        fields = [
+            "localizador", "estado", "estado_display", "vehiculo_nombre",
+            "fecha_inicio", "fecha_fin", "num_dias", "precio_dia_base",
+            "subtotal_vehiculo", "subtotal_extras", "fianza", "total",
+            "metodo_pago",
+        ]

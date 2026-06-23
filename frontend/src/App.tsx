@@ -14,6 +14,7 @@ import Cookies from "@/pages/Cookies";
 import Condiciones from "@/pages/Condiciones";
 import { useFrontendConfig } from "@/hooks/useFrontendConfig";
 import { HeroProvider } from "@/hooks/useHero";
+import ScrollToTop from "@/components/layout/ScrollToTop";
 
 function Placeholder({ titulo }: { titulo: string }) {
   return (
@@ -31,6 +32,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <HeroProvider>
+        <ScrollToTop />
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Home />} />

@@ -146,3 +146,126 @@ class ExtraListView(ListAPIView):
 
     def get_queryset(self):
         return Extra.objects.filter(activo=True)
+
+
+# ─────────────────────────────────────────────────────────────
+# Creación de reserva (asistente multipaso) — endpoint de ESCRITURA
+# ─────────────────────────────────────────────────────────────
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def crear_reserva(request):
+    """Crea una reserva desde el asistente.
+
+    POST /api/reservas/
+    Flujo:
+      1. Valida el payload (incluido acepta_condiciones).
+      2. Comprueba que el vehículo existe, está activo y disponible.
+      3. Crea/reutiliza el cliente (por NIF).
+      4. Crea la reserva en estado 'pendiente'.
+      5. Añade los extras con su precio CONGELADO del catálogo.
+      6. Recalcula los totales EN SERVIDOR (ignora cualquier precio del front).
+      7. Devuelve el localizador y el desglose.
+
+    Todo dentro de una transacción atómica: si algo falla, no queda nada a medias.
+    """
+    from django.db import transaction
+    from .models import Cliente, Reserva, ReservaExtra
+    from .serializers import CrearReservaSerializer, ReservaCreadaSerializer
+
+    serializer = CrearReservaSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    datos = serializer.validated_data
+
+    # 2) Vehículo activo + disponible en esas fechas.
+    try:
+        vehiculo = Vehiculo.objects.get(pk=datos["vehiculo_id"], activo=True)
+    except Vehiculo.DoesNotExist:
+        return Response({"detail": "Vehículo no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    fi, ff = datos["fecha_inicio"], datos["fecha_fin"]
+    if not vehiculo.esta_disponible(fi, ff):
+        return Response(
+            {"detail": "El vehículo ya no está disponible en esas fechas."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    # Verificar que el vehículo tiene tarifa para esa duración.
+    calculo = vehiculo.calcular_precio(fi, ff)
+    if calculo is None:
+        return Response(
+            {"detail": "El vehículo no tiene tarifa para esa duración."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    sedes = {}
+    for campo, key in [("sede_recogida_id", "sede_recogida"), ("sede_entrega_id", "sede_entrega")]:
+        sid = datos.get(campo)
+        if sid:
+            try:
+                sedes[key] = Sede.objects.get(pk=sid, activa=True)
+            except Sede.DoesNotExist:
+                sedes[key] = None
+
+    cdatos = datos["cliente"]
+
+    try:
+        with transaction.atomic():
+            # 3) Cliente: reutiliza si el NIF ya existe, actualizando sus datos.
+            cliente, _ = Cliente.objects.get_or_create(
+                nif=cdatos["nif"],
+                defaults={
+                    "nombre": cdatos["nombre"],
+                    "apellidos": cdatos.get("apellidos", ""),
+                    "email": cdatos["email"],
+                    "telefono": cdatos["telefono"],
+                },
+            )
+            # Actualiza los datos del cliente con lo recibido.
+            for campo in [
+                "nombre", "apellidos", "email", "telefono", "fecha_nacimiento",
+                "direccion", "poblacion", "cp", "provincia", "pais",
+                "carnet_numero", "carnet_caducidad",
+            ]:
+                if campo in cdatos and cdatos[campo] not in (None, ""):
+                    setattr(cliente, campo, cdatos[campo])
+            cliente.save()
+
+            # 4) Reserva en estado pendiente.
+            reserva = Reserva.objects.create(
+                cliente=cliente,
+                vehiculo=vehiculo,
+                fecha_inicio=fi,
+                fecha_fin=ff,
+                sede_recogida=sedes.get("sede_recogida"),
+                sede_entrega=sedes.get("sede_entrega"),
+                estado=Reserva.Estado.PENDIENTE,
+                metodo_pago=datos["metodo_pago"],
+            )
+
+            # 5) Extras con precio congelado del catálogo (no del front).
+            for item in datos["extras"]:
+                try:
+                    extra = Extra.objects.get(pk=item["extra_id"], activo=True)
+                except Extra.DoesNotExist:
+                    continue  # ignora extras inexistentes
+                ReservaExtra.objects.create(
+                    reserva=reserva,
+                    extra=extra,
+                    cantidad=item.get("cantidad", 1),
+                    precio_congelado=extra.precio,
+                    tipo_cobro_congelado=extra.tipo_cobro,
+                )
+
+            # 6) Recalcular totales EN SERVIDOR.
+            reserva.recalcular_totales(guardar=True)
+
+    except Exception:
+        return Response(
+            {"detail": "No se pudo crear la reserva. Inténtalo de nuevo."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    # 7) Respuesta con el localizador y el desglose.
+    salida = ReservaCreadaSerializer(reserva)
+    return Response(salida.data, status=status.HTTP_201_CREATED)
