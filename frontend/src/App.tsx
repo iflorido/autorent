@@ -8,6 +8,7 @@ import Extras from "@/pages/Extras";
 import Tarifas from "@/pages/Tarifas";
 import FAQ from "@/pages/FAQ";
 import Contacto from "@/pages/Contacto";
+import Reserva from "@/pages/Reserva";
 import AvisoLegal from "@/pages/AvisoLegal";
 import Privacidad from "@/pages/Privacidad";
 import Cookies from "@/pages/Cookies";
@@ -38,6 +39,7 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="modelos" element={<Modelos />} />
             <Route path="vehiculo/:slug" element={<Vehiculo />} />
+            <Route path="reserva/:slug" element={<Reserva />} />
             <Route path="reservas" element={<Placeholder titulo="Reservas" />} />
             <Route path="contacto" element={<Contacto />} />
             <Route path="localizaciones" element={<Localizaciones />} />

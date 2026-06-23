@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { getVehiculo, getVehiculos, getPrecio } from "@/lib/api";
 import type { Extra, PrecioCalculo, VehiculoDetail, VehiculoList } from "@/types";
 import { formatoCorto, toISODate } from "@/lib/fechas";
@@ -9,6 +9,7 @@ import CalendarioRango from "@/components/ui/CalendarioRango";
 
 export default function Vehiculo() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [vehiculo, setVehiculo] = useState<VehiculoDetail | null>(null);
   const [fotoActiva, setFotoActiva] = useState(0);
@@ -297,6 +298,16 @@ export default function Vehiculo() {
 
               <button
                 disabled={!precio?.disponible}
+                onClick={() => {
+                  if (!vehiculo || !inicio || !fin) return;
+                  const params = new URLSearchParams();
+                  params.set("fecha_inicio", toISODate(inicio));
+                  params.set("fecha_fin", toISODate(fin));
+                  if (extrasSel.size > 0) {
+                    params.set("extras", Array.from(extrasSel).join(","));
+                  }
+                  navigate(`/reserva/${vehiculo.slug}?${params.toString()}`);
+                }}
                 className="w-full mt-5 h-11 bg-accent text-white rounded-lg font-medium hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Continuar con la reserva

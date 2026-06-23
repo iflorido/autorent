@@ -1,8 +1,10 @@
 import axios from "axios";
 import type {
+  CrearReservaPayload,
   Extra,
   Paginated,
   PrecioCalculo,
+  ReservaCreada,
   Sede,
   VehiculoDetail,
   VehiculoList,
@@ -59,5 +61,10 @@ export async function getPrecio(
   const { data } = await api.get<PrecioCalculo>(`/vehiculos/${id}/precio/`, {
     params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
   });
+  return data;
+}
+
+export async function crearReserva(payload: CrearReservaPayload): Promise<ReservaCreada> {
+  const { data } = await api.post<ReservaCreada>("/reservas/", payload);
   return data;
 }

@@ -86,3 +86,54 @@ export interface Paginated<T> {
   previous: string | null;
   results: T[];
 }
+
+// --- Asistente de reserva ---
+
+export interface ClienteEntrada {
+  nombre: string;
+  apellidos?: string;
+  nif: string;
+  email: string;
+  telefono: string;
+  fecha_nacimiento?: string | null;
+  direccion?: string;
+  poblacion?: string;
+  cp?: string;
+  provincia?: string;
+  pais?: string;
+  carnet_numero?: string;
+  carnet_caducidad?: string | null;
+}
+
+export interface ExtraEntrada {
+  extra_id: number;
+  cantidad: number;
+}
+
+export interface CrearReservaPayload {
+  vehiculo_id: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  sede_recogida_id?: number | null;
+  sede_entrega_id?: number | null;
+  metodo_pago: "transferencia" | "tarjeta" | "efectivo";
+  cliente: ClienteEntrada;
+  extras: ExtraEntrada[];
+  acepta_condiciones: boolean;
+}
+
+export interface ReservaCreada {
+  localizador: string;
+  estado: string;
+  estado_display: string;
+  vehiculo_nombre: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  num_dias: number;
+  precio_dia_base: string;
+  subtotal_vehiculo: string;
+  subtotal_extras: string;
+  fianza: string;
+  total: string;
+  metodo_pago: string;
+}
