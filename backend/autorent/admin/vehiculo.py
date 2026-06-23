@@ -59,6 +59,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     list_display = ("nombre", "matricula", "categoria", "sede", "plazas", "km_actuales", "activo")
     list_filter = ("categoria", "activo", "sede", "combustible", "cambio")
     search_fields = ("nombre", "matricula", "marca", "modelo")
+    prepopulated_fields = {"slug": ("nombre",)}
     filter_horizontal = ("extras",)
     inlines = [
         FotoVehiculoInline,
@@ -69,7 +70,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     ]
     fieldsets = (
         ("Identificación", {
-            "fields": ("nombre", "matricula", "marca", "modelo", "anio", "categoria"),
+            "fields": ("nombre", "slug", "matricula", "marca", "modelo", "anio", "categoria"),
         }),
         ("Características", {
             "fields": ("plazas", "puertas", "combustible", "cambio",

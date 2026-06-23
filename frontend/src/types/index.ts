@@ -41,6 +41,7 @@ export interface RangoPrecio {
 
 export interface VehiculoList {
   id: number;
+  slug: string;
   nombre: string;
   marca: string;
   modelo: string;

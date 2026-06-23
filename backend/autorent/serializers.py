@@ -63,7 +63,7 @@ class VehiculoListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehiculo
         fields = [
-            "id", "nombre", "marca", "modelo", "categoria", "categoria_display",
+            "id", "slug", "nombre", "marca", "modelo", "categoria", "categoria_display",
             "plazas", "puertas", "combustible", "cambio", "capacidad_carga",
             "foto_principal", "precio_desde",
         ]
@@ -97,7 +97,7 @@ class VehiculoDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehiculo
         fields = [
-            "id", "nombre", "marca", "modelo", "anio", "categoria",
+            "id", "slug", "nombre", "marca", "modelo", "anio", "categoria",
             "categoria_display", "plazas", "puertas", "combustible",
             "combustible_display", "cambio", "cambio_display",
             "capacidad_carga", "descripcion", "fianza",

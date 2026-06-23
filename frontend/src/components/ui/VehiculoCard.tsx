@@ -13,7 +13,7 @@ export default function VehiculoCard({ v, fechaInicio, fechaFin }: Props) {
   if (fechaInicio) query.set("fecha_inicio", fechaInicio);
   if (fechaFin) query.set("fecha_fin", fechaFin);
   const qs = query.toString();
-  const to = `/vehiculo/${v.id}${qs ? `?${qs}` : ""}`;
+  const to = `/vehiculo/${v.slug}${qs ? `?${qs}` : ""}`;
 
   return (
     <div className="bg-bg-2 border border-border rounded-xl overflow-hidden flex flex-col group">

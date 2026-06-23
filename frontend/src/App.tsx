@@ -30,7 +30,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="modelos" element={<Modelos />} />
-            <Route path="vehiculo/:id" element={<Vehiculo />} />
+            <Route path="vehiculo/:slug" element={<Vehiculo />} />
             <Route path="reservas" element={<Placeholder titulo="Reservas" />} />
             <Route path="contacto" element={<Placeholder titulo="Contacto" />} />
             <Route path="localizaciones" element={<Localizaciones />} />

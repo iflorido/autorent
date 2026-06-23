@@ -36,6 +36,10 @@ class Vehiculo(models.Model):
         max_length=120, verbose_name="Nombre comercial",
         help_text="Ej: Volkswagen California 2022",
     )
+    slug = models.SlugField(
+        max_length=140, unique=True, blank=True, verbose_name="Slug (URL)",
+        help_text="Se genera automáticamente del nombre si se deja vacío.",
+    )
     matricula = models.CharField(max_length=15, unique=True, verbose_name="Matrícula")
     marca = models.CharField(max_length=60, verbose_name="Marca")
     modelo = models.CharField(max_length=60, verbose_name="Modelo")
@@ -94,6 +98,19 @@ class Vehiculo(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.matricula})"
+
+    def save(self, *args, **kwargs):
+        # Autogenera un slug único a partir del nombre si está vacío.
+        if not self.slug:
+            from django.utils.text import slugify
+            base = slugify(self.nombre) or "vehiculo"
+            slug = base
+            n = 2
+            while Vehiculo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     @property
     def foto_principal(self):

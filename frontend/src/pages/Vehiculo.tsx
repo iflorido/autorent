@@ -6,7 +6,7 @@ import { formatoCorto, toISODate } from "@/lib/fechas";
 import CalendarioRango from "@/components/ui/CalendarioRango";
 
 export default function Vehiculo() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const [vehiculo, setVehiculo] = useState<VehiculoDetail | null>(null);
   const [fotoActiva, setFotoActiva] = useState(0);
@@ -25,21 +25,21 @@ export default function Vehiculo() {
   const [extrasSel, setExtrasSel] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    if (!id) return;
-    getVehiculo(Number(id)).then(setVehiculo).catch(() => {});
-  }, [id]);
+    if (!slug) return;
+    getVehiculo(slug).then(setVehiculo).catch(() => {});
+  }, [slug]);
 
   useEffect(() => {
-    if (!id || !inicio || !fin) {
+    if (!vehiculo || !inicio || !fin) {
       setPrecio(null);
       return;
     }
     setCalculandoPrecio(true);
-    getPrecio(Number(id), toISODate(inicio), toISODate(fin))
+    getPrecio(vehiculo.id, toISODate(inicio), toISODate(fin))
       .then(setPrecio)
       .catch(() => setPrecio(null))
       .finally(() => setCalculandoPrecio(false));
-  }, [id, inicio, fin]);
+  }, [vehiculo, inicio, fin]);
 
   const fotos = vehiculo?.fotos ?? [];
   const fotoPrincipal = useMemo(() => fotos[fotoActiva] ?? fotos[0], [fotos, fotoActiva]);

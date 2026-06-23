@@ -46,8 +46,8 @@ export async function getVehiculos(
   return data.results;
 }
 
-export async function getVehiculo(id: number): Promise<VehiculoDetail> {
-  const { data } = await api.get<VehiculoDetail>(`/vehiculos/${id}/`);
+export async function getVehiculo(slug: string): Promise<VehiculoDetail> {
+  const { data } = await api.get<VehiculoDetail>(`/vehiculos/${slug}/`);
   return data;
 }
 

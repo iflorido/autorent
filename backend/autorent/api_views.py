@@ -83,6 +83,7 @@ class VehiculoListView(ListAPIView):
 class VehiculoDetailView(RetrieveAPIView):
     serializer_class = VehiculoDetailSerializer
     permission_classes = [AllowAny]
+    lookup_field = "slug"
 
     def get_queryset(self):
         return Vehiculo.objects.filter(activo=True).prefetch_related(
