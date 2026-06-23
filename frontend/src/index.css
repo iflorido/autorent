@@ -37,3 +37,26 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
 }
+
+/* Contenido de páginas legales */
+.legal-content h2 {
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+.legal-content h3 {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.4rem;
+}
+.legal-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+.legal-content li { margin: 0.3rem 0; }
+.legal-content strong { color: var(--text); }

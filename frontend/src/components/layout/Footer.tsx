@@ -47,6 +47,7 @@ export default function Footer() {
           <ul className="space-y-2 text-[13px] text-text-2">
             <li><Link to="/aviso-legal" className="hover:text-accent">Aviso legal</Link></li>
             <li><Link to="/privacidad" className="hover:text-accent">Privacidad</Link></li>
+            <li><Link to="/cookies" className="hover:text-accent">Política de cookies</Link></li>
             <li><Link to="/condiciones" className="hover:text-accent">Condiciones de contratación</Link></li>
           </ul>
         </div>

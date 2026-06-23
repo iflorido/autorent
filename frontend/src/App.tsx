@@ -7,6 +7,10 @@ import Localizaciones from "@/pages/Localizaciones";
 import Extras from "@/pages/Extras";
 import Tarifas from "@/pages/Tarifas";
 import FAQ from "@/pages/FAQ";
+import AvisoLegal from "@/pages/AvisoLegal";
+import Privacidad from "@/pages/Privacidad";
+import Cookies from "@/pages/Cookies";
+import Condiciones from "@/pages/Condiciones";
 import { useFrontendConfig } from "@/hooks/useFrontendConfig";
 import { HeroProvider } from "@/hooks/useHero";
 
@@ -37,9 +41,10 @@ export default function App() {
             <Route path="tarifas" element={<Tarifas />} />
             <Route path="extras" element={<Extras />} />
             <Route path="faq" element={<FAQ />} />
-            <Route path="aviso-legal" element={<Placeholder titulo="Aviso legal" />} />
-            <Route path="privacidad" element={<Placeholder titulo="Privacidad" />} />
-            <Route path="condiciones" element={<Placeholder titulo="Condiciones de contratación" />} />
+            <Route path="aviso-legal" element={<AvisoLegal />} />
+            <Route path="privacidad" element={<Privacidad />} />
+            <Route path="condiciones" element={<Condiciones />} />
+            <Route path="cookies" element={<Cookies />} />
             <Route path="*" element={<Placeholder titulo="Página no encontrada" />} />
           </Route>
         </Routes>
