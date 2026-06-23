@@ -198,7 +198,7 @@ export default function Vehiculo() {
           {/* Sidebar sticky de reserva */}
           <aside className="lg:sticky lg:top-24">
             <div className="bg-bg-2 border border-border rounded-xl shadow-soft p-5">
-              <p className="font-medium">{vehiculo.nombre}</p>
+              <p className="font-display font-medium">{vehiculo.nombre}</p>
               {vehiculo.sede && (
                 <p className="text-[13px] text-text-2 mt-0.5">{vehiculo.sede.nombre}</p>
               )}

@@ -1,6 +1,3 @@
-from django.shortcuts import render
-
-# Create your views here.
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -21,3 +18,20 @@ def api_root(request):
             },
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def frontend_config(request):
+    """Tokens de color y fuentes para que el frontend aplique el tema.
+
+    GET /api/frontend-config/
+    """
+    from .models import FrontendConfig
+    cfg = FrontendConfig.load()
+    return Response({
+        "tokens": cfg.as_tokens(),
+        "fuentes_google": cfg.fuentes_google,
+        "font_display": cfg.font_display,
+        "font_body": cfg.font_body,
+    })

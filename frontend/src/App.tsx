@@ -3,6 +3,7 @@ import Layout from "@/components/layout/Layout";
 import Home from "@/pages/Home";
 import Modelos from "@/pages/Modelos";
 import Vehiculo from "@/pages/Vehiculo";
+import { useFrontendConfig } from "@/hooks/useFrontendConfig";
 
 function Placeholder({ titulo }: { titulo: string }) {
   return (
@@ -16,6 +17,7 @@ function Placeholder({ titulo }: { titulo: string }) {
 }
 
 export default function App() {
+  useFrontendConfig();
   return (
     <BrowserRouter>
       <Routes>

@@ -13,7 +13,7 @@ from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from .models import EmailConfig, Sede, SiteConfig
+from .models import EmailConfig, FrontendConfig, FRONTEND_DEFAULTS, Sede, SiteConfig
 
 
 @admin.register(SiteConfig)
@@ -188,3 +188,70 @@ class SedeAdmin(admin.ModelAdmin):
         ("Geolocalización", {"fields": ("latitud", "longitud")}),
         ("Contacto", {"fields": ("telefono", "email", "horario")}),
     )
+
+
+class RestablecerWidget(forms.TextInput):
+    """Input de texto con un botón 'Restablecer' que pone el valor por defecto."""
+
+    def __init__(self, default_value="", *args, **kwargs):
+        self.default_value = default_value
+        super().__init__(*args, **kwargs)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        input_html = super().render(name, value, attrs, renderer)
+        # Muestra una pastilla con el valor por defecto y un botón restablecer.
+        return format_html(
+            '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+            '{}'
+            '<button type="button" class="ar-reset" data-default="{}" '
+            'style="padding:4px 10px;border:1px solid #cbd5e1;border-radius:6px;'
+            'background:#f8fafc;font-size:.75rem;cursor:pointer;white-space:nowrap;">'
+            '↺ Restablecer</button>'
+            '<code style="font-size:.7rem;color:#94a3b8;">{}</code>'
+            '</div>',
+            input_html, self.default_value, self.default_value,
+        )
+
+
+class FrontendConfigForm(forms.ModelForm):
+    class Meta:
+        model = FrontendConfig
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Asignar a cada campo de color su widget con su valor por defecto.
+        for campo, default in FRONTEND_DEFAULTS.items():
+            if campo in self.fields and campo not in ("font_display", "font_body"):
+                self.fields[campo].widget = RestablecerWidget(default_value=default)
+
+
+@admin.register(FrontendConfig)
+class FrontendConfigAdmin(admin.ModelAdmin):
+    form = FrontendConfigForm
+
+    fieldsets = (
+        ("Fondo y superficies", {
+            "fields": ("bg", "bg_2", "surface", "surface_2", "surface_3"),
+        }),
+        ("Bordes", {"fields": ("border", "border_2")}),
+        ("Texto", {"fields": ("text", "text_2")}),
+        ("Acento", {"fields": ("accent", "accent_dim", "accent_glow")}),
+        ("Sombra", {"fields": ("shadow",)}),
+        ("Tipografía", {"fields": ("font_display", "font_body")}),
+    )
+
+    def has_add_permission(self, request):
+        return not FrontendConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        obj = FrontendConfig.load()
+        from django.urls import reverse
+        url = reverse("admin:core_frontendconfig_change", args=[obj.pk])
+        return HttpResponseRedirect(url)
+
+    class Media:
+        js = ("core/js/frontend_reset.js",)

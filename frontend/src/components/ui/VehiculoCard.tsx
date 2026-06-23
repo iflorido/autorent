@@ -31,7 +31,7 @@ export default function VehiculoCard({ v, fechaInicio, fechaFin }: Props) {
         )}
       </div>
       <div className="p-4 flex flex-col flex-1">
-        <p className="font-medium">{v.nombre}</p>
+        <p className="font-display font-medium text-[15px]">{v.nombre}</p>
         <p className="text-[13px] text-text-2 mt-0.5">
           {v.categoria_display} · {v.plazas} plazas
         </p>

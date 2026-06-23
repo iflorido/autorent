@@ -50,7 +50,7 @@ export default function Header() {
             A
           </span>
           <span
-            className="text-lg font-medium tracking-tight transition-colors"
+            className="font-display text-lg font-medium tracking-tight transition-colors"
             style={{ color: solido ? "var(--text)" : "#fff" }}
           >
             AutoRent
