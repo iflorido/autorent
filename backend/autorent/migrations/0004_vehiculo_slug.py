@@ -33,7 +33,10 @@ class Migration(migrations.Migration):
             model_name="vehiculo",
             name="slug",
             field=models.SlugField(
-                blank=True, default="", max_length=140,
+                blank=True, 
+                default="", 
+                max_length=140,
+                db_index=False,  # <--- ESTO EVITA QUE EL PASO 1 CREE EL ÍNDICE 'LIKE'
                 verbose_name="Slug (URL)",
                 help_text="Se genera automáticamente del nombre si se deja vacío.",
             ),
