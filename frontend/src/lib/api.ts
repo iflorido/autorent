@@ -1,5 +1,6 @@
 import axios from "axios";
 import type {
+  Extra,
   Paginated,
   PrecioCalculo,
   Sede,
@@ -25,6 +26,11 @@ export interface VehiculoFiltros {
 export async function getSedes(): Promise<Sede[]> {
   const { data } = await api.get<Paginated<Sede>>("/sedes/");
   return data.results;
+}
+
+export async function getExtras(): Promise<Extra[]> {
+  const { data } = await api.get<Extra[]>("/extras/");
+  return data;
 }
 
 export async function getVehiculos(

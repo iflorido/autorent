@@ -18,8 +18,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from core.models import Sede
-from .models import Vehiculo
+from .models import Extra, Vehiculo
 from .serializers import (
+    ExtraSerializer,
     SedeSerializer,
     VehiculoDetailSerializer,
     VehiculoListSerializer,
@@ -134,3 +135,13 @@ def vehiculo_precio(request, pk):
         "subtotal_vehiculo": calculo["subtotal_vehiculo"],
         "fianza": calculo["fianza"],
     })
+
+
+class ExtraListView(ListAPIView):
+    """Listado de extras activos (para la página pública de Extras)."""
+    serializer_class = ExtraSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Extra.objects.filter(activo=True)
