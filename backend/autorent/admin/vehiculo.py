@@ -56,8 +56,8 @@ class MantenimientoInline(admin.TabularInline):
 
 @admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "matricula", "categoria", "plazas", "km_actuales", "activo")
-    list_filter = ("categoria", "activo", "combustible", "cambio")
+    list_display = ("nombre", "matricula", "categoria", "sede", "plazas", "km_actuales", "activo")
+    list_filter = ("categoria", "activo", "sede", "combustible", "cambio")
     search_fields = ("nombre", "matricula", "marca", "modelo")
     filter_horizontal = ("extras",)
     inlines = [
@@ -76,7 +76,7 @@ class VehiculoAdmin(admin.ModelAdmin):
                        "capacidad_carga", "descripcion"),
         }),
         ("Operativa", {
-            "fields": ("fianza", "km_actuales", "activo", "extras"),
+            "fields": ("sede", "fianza", "km_actuales", "activo", "extras"),
         }),
     )
 

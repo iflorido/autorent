@@ -22,7 +22,9 @@ export default {
         soft: "var(--shadow)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["DM Sans", "system-ui", "sans-serif"],
+        body: ["DM Sans", "system-ui", "sans-serif"],
+        display: ["Cabin", "sans-serif"],
       },
       maxWidth: {
         container: "1200px",

@@ -18,6 +18,9 @@
   --accent-dim: rgba(8, 145, 178, 0.08);
   --accent-glow: rgba(8, 145, 178, 0.05);
   --shadow: 0 20px 50px rgba(15, 23, 42, 0.07);
+  /* Tipografía: display para títulos, body para texto. */
+  --font-display: "Cabin", sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
 }
 
 html {
@@ -27,6 +30,10 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
 }
