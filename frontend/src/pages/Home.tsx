@@ -4,6 +4,7 @@ import Buscador from "@/components/ui/Buscador";
 import CarruselVehiculos from "@/components/ui/CarruselVehiculos";
 import OficinasCercanas from "@/components/ui/OficinasCercanas";
 import FadeIn from "@/components/ui/FadeIn";
+import PasosReserva from "@/components/ui/PasosReserva";
 import { getSedes, getVehiculos } from "@/lib/api";
 import { useHeroOscuro } from "@/hooks/useHeroOscuro";
 import type { Sede, VehiculoList } from "@/types";
@@ -16,15 +17,9 @@ const VENTAJAS = [
 ];
 
 const CATEGORIAS = [
-  { slug: "turismo", label: "Turismo", desc: "Espacio y confort para la familia." },
-  { slug: "camper", label: "Camper", desc: "Tu casa sobre ruedas para escapadas." },
-  { slug: "industrial", label: "Industrial", desc: "Carga y volumen para profesionales." },
-];
-
-const PASOS = [
-  { n: "1", titulo: "Elige fechas y vehículo", texto: "Busca por fechas y compara nuestra flota disponible." },
-  { n: "2", titulo: "Añade tus extras", texto: "Personaliza tu alquiler con seguros, GPS y más." },
-  { n: "3", titulo: "Confirma y viaja", texto: "Reserva en minutos y recoge tu vehículo." },
+  { slug: "turismo", label: "Turismo", desc: "Espacio y confort para la familia.", img: "/images/cat-turismo.jpg" },
+  { slug: "camper", label: "Camper", desc: "Tu casa sobre ruedas para escapadas.", img: "/images/cat-camper.jpg" },
+  { slug: "industrial", label: "Industrial", desc: "Carga y volumen para profesionales.", img: "/images/cat-industrial.jpg" },
 ];
 
 export default function Home() {
@@ -97,28 +92,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Cómo funciona — bloque nuevo con pasos numerados */}
+      {/* Cómo funciona — pasos numerados (componente reutilizable) */}
       <section className="bg-bg-2 border-y border-border py-16">
         <div className="max-w-container mx-auto px-6">
-          <FadeIn>
-            <div className="text-center mb-10">
-              <h2 className="text-2xl font-medium">Reservar es muy fácil</h2>
-              <p className="text-text-2 mt-2">En tres pasos tienes tu vehículo listo.</p>
-            </div>
-          </FadeIn>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PASOS.map((p, i) => (
-              <FadeIn key={p.n} delay={i * 100}>
-                <div className="relative bg-bg border border-border rounded-2xl p-6 h-full">
-                  <span className="absolute -top-4 left-6 w-9 h-9 rounded-full bg-accent text-white font-display font-medium flex items-center justify-center shadow-soft">
-                    {p.n}
-                  </span>
-                  <p className="font-display font-medium text-lg mt-3">{p.titulo}</p>
-                  <p className="text-[13px] text-text-2 leading-relaxed mt-1">{p.texto}</p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
+          <PasosReserva />
         </div>
       </section>
 
@@ -132,15 +109,23 @@ export default function Home() {
             <FadeIn key={c.slug} delay={i * 100}>
               <Link
                 to={`/modelos?categoria=${c.slug}`}
-                className="group block bg-bg-2 border border-border rounded-2xl p-6 hover:border-accent hover:shadow-soft transition-all duration-300"
+                className="group relative block rounded-2xl overflow-hidden h-56"
               >
-                <div className="h-32 rounded-xl bg-accent-dim mb-4 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-colors">
-                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-                    <path d="M3 13h18v4H3zM5 13V8h11l3 5" />
-                  </svg>
+                {/* Imagen de fondo */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                  style={{ backgroundImage: `url('${c.img}')`, backgroundColor: "#0f2433" }}
+                />
+                {/* Capa azul: opaca por defecto (0.85), se aclara al hover (0.30) para ver la foto */}
+                <div
+                  className="absolute inset-0 transition-opacity duration-300 opacity-[0.85] group-hover:opacity-30"
+                  style={{ background: "linear-gradient(160deg, #0f2433, #0891b2)" }}
+                />
+                {/* Contenido */}
+                <div className="relative h-full flex flex-col justify-end p-6">
+                  <p className="font-display font-medium text-lg text-white">{c.label}</p>
+                  <p className="text-[13px] text-white/85 mt-1">{c.desc}</p>
                 </div>
-                <p className="font-display font-medium text-lg group-hover:text-accent transition">{c.label}</p>
-                <p className="text-[13px] text-text-2 mt-1">{c.desc}</p>
               </Link>
             </FadeIn>
           ))}

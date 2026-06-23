@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { getVehiculo, getPrecio } from "@/lib/api";
-import type { Extra, PrecioCalculo, VehiculoDetail } from "@/types";
+import { getVehiculo, getVehiculos, getPrecio } from "@/lib/api";
+import type { Extra, PrecioCalculo, VehiculoDetail, VehiculoList } from "@/types";
 import { formatoCorto, toISODate } from "@/lib/fechas";
+import CarruselVehiculos from "@/components/ui/CarruselVehiculos";
+import FadeIn from "@/components/ui/FadeIn";
 import CalendarioRango from "@/components/ui/CalendarioRango";
 
 export default function Vehiculo() {
@@ -24,9 +26,19 @@ export default function Vehiculo() {
   // Extras seleccionados (set de ids).
   const [extrasSel, setExtrasSel] = useState<Set<number>>(new Set());
 
+  // Otros vehículos para el slider del final.
+  const [otros, setOtros] = useState<VehiculoList[]>([]);
+
   useEffect(() => {
     if (!slug) return;
     getVehiculo(slug).then(setVehiculo).catch(() => {});
+  }, [slug]);
+
+  // Cargar otros vehículos (excluyendo el actual) para "Otras opciones".
+  useEffect(() => {
+    getVehiculos()
+      .then((lista) => setOtros(lista.filter((v) => v.slug !== slug).slice(0, 8)))
+      .catch(() => setOtros([]));
   }, [slug]);
 
   useEffect(() => {
@@ -296,6 +308,17 @@ export default function Vehiculo() {
           </aside>
         </div>
       </div>
+
+      {/* Otros vehículos disponibles */}
+      {otros.length > 0 && (
+        <section className="bg-bg-2 border-t border-border py-16 mt-8">
+          <div className="max-w-container mx-auto px-6">
+            <FadeIn>
+              <CarruselVehiculos vehiculos={otros} titulo="Otros vehículos disponibles" />
+            </FadeIn>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

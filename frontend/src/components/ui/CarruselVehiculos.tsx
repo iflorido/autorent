@@ -2,7 +2,7 @@ import { useRef } from "react";
 import type { VehiculoList } from "@/types";
 import VehiculoCard from "./VehiculoCard";
 
-export default function CarruselVehiculos({ vehiculos }: { vehiculos: VehiculoList[] }) {
+export default function CarruselVehiculos({ vehiculos, titulo = "Nuestros vehículos" }: { vehiculos: VehiculoList[]; titulo?: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function desplazar(dir: number) {
@@ -16,7 +16,7 @@ export default function CarruselVehiculos({ vehiculos }: { vehiculos: VehiculoLi
   return (
     <div className="relative">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl font-medium">Nuestros vehículos</h2>
+        <h2 className="text-xl font-medium">{titulo}</h2>
         <div className="flex gap-2">
           <button
             onClick={() => desplazar(-1)}

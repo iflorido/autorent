@@ -7,10 +7,11 @@ export default function Footer() {
       <div className="max-w-container mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex w-7 h-7 rounded-lg bg-accent items-center justify-center text-white text-sm font-medium">
-              A
-            </span>
-            <span className="font-medium">AutoRent</span>
+            <img
+              src="/images/logo-1181x535px.png"
+              alt="AutoRent"
+              className="h-9 w-auto"
+            />
           </div>
           <p className="text-[13px] text-text-2 leading-relaxed">
             Alquiler de furgonetas, campers y vehículos para cada viaje.

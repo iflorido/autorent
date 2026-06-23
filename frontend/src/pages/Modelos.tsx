@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import VehiculoCard from "@/components/ui/VehiculoCard";
 import BuscadorSeccion from "@/components/ui/BuscadorSeccion";
+import PasosReserva from "@/components/ui/PasosReserva";
 import FadeIn from "@/components/ui/FadeIn";
 import { getVehiculos } from "@/lib/api";
 import { useHeroOscuro } from "@/hooks/useHeroOscuro";
@@ -99,6 +100,13 @@ export default function Modelos() {
           ))}
         </div>
       </div>
+
+      {/* Bloque de pasos antes del footer */}
+      <section className="bg-bg-2 border-t border-border py-16 mt-8">
+        <div className="max-w-container mx-auto px-6">
+          <PasosReserva />
+        </div>
+      </section>
     </div>
   );
 }
