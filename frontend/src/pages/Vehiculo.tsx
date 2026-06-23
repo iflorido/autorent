@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { getVehiculo, getPrecio } from "@/lib/api";
-import type { PrecioCalculo, VehiculoDetail } from "@/types";
+import type { Extra, PrecioCalculo, VehiculoDetail } from "@/types";
 import { formatoCorto, toISODate } from "@/lib/fechas";
 import CalendarioRango from "@/components/ui/CalendarioRango";
 
@@ -11,7 +11,6 @@ export default function Vehiculo() {
   const [vehiculo, setVehiculo] = useState<VehiculoDetail | null>(null);
   const [fotoActiva, setFotoActiva] = useState(0);
 
-  // Fechas (desde la URL si vienen del buscador).
   const [inicio, setInicio] = useState<Date | null>(
     searchParams.get("fecha_inicio") ? new Date(searchParams.get("fecha_inicio")!) : null,
   );
@@ -22,12 +21,14 @@ export default function Vehiculo() {
   const [precio, setPrecio] = useState<PrecioCalculo | null>(null);
   const [calculandoPrecio, setCalculandoPrecio] = useState(false);
 
+  // Extras seleccionados (set de ids).
+  const [extrasSel, setExtrasSel] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     if (!id) return;
     getVehiculo(Number(id)).then(setVehiculo).catch(() => {});
   }, [id]);
 
-  // Recalcula el precio cuando hay fechas válidas.
   useEffect(() => {
     if (!id || !inicio || !fin) {
       setPrecio(null);
@@ -43,6 +44,35 @@ export default function Vehiculo() {
   const fotos = vehiculo?.fotos ?? [];
   const fotoPrincipal = useMemo(() => fotos[fotoActiva] ?? fotos[0], [fotos, fotoActiva]);
 
+  function toggleExtra(extraId: number) {
+    setExtrasSel((prev) => {
+      const n = new Set(prev);
+      if (n.has(extraId)) n.delete(extraId);
+      else n.add(extraId);
+      return n;
+    });
+  }
+
+  // Precio de un extra según su tipo de cobro y los días de la reserva.
+  function precioExtra(e: Extra): number {
+    const dias = precio?.num_dias ?? 0;
+    const base = parseFloat(e.precio);
+    return e.tipo_cobro === "por_dia" ? base * dias : base;
+  }
+
+  // Lista de extras seleccionados con su subtotal calculado.
+  const extrasCalculados = useMemo(() => {
+    if (!vehiculo) return [];
+    return vehiculo.extras
+      .filter((e) => extrasSel.has(e.id))
+      .map((e) => ({ extra: e, subtotal: precioExtra(e) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehiculo, extrasSel, precio?.num_dias]);
+
+  const totalExtras = extrasCalculados.reduce((s, x) => s + x.subtotal, 0);
+  const subtotalVehiculo = precio ? parseFloat(precio.subtotal_vehiculo) : 0;
+  const totalAlquiler = subtotalVehiculo + totalExtras;
+
   if (!vehiculo) {
     return <div className="pt-28 max-w-container mx-auto px-6 py-20 text-text-2">Cargando…</div>;
   }
@@ -55,6 +85,8 @@ export default function Vehiculo() {
     { label: "Carga", valor: vehiculo.capacidad_carga || "—" },
     { label: "Categoría", valor: vehiculo.categoria_display },
   ];
+
+  const fmt = (n: number) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="pt-16">
@@ -117,22 +149,47 @@ export default function Vehiculo() {
               </div>
             </div>
 
-            {/* Extras disponibles */}
+            {/* Extras seleccionables */}
             {vehiculo.extras.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-lg font-medium mb-4">Extras disponibles</h2>
+                <h2 className="text-lg font-medium mb-1">Extras</h2>
+                <p className="text-[13px] text-text-2 mb-4">
+                  Marca los que quieras añadir; se sumarán al total.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {vehiculo.extras.map((e) => (
-                    <div key={e.id} className="flex items-center justify-between bg-bg-2 border border-border rounded-lg px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium">{e.nombre}</p>
-                        {e.descripcion && <p className="text-[12px] text-text-2">{e.descripcion}</p>}
-                      </div>
-                      <p className="text-sm text-accent font-medium whitespace-nowrap">
-                        {e.precio} € <span className="text-text-2 font-normal">/ {e.tipo_cobro === "por_dia" ? "día" : "ud."}</span>
-                      </p>
-                    </div>
-                  ))}
+                  {vehiculo.extras.map((e) => {
+                    const sel = extrasSel.has(e.id);
+                    return (
+                      <button
+                        key={e.id}
+                        onClick={() => toggleExtra(e.id)}
+                        className={`flex items-center justify-between gap-3 rounded-lg px-4 py-3 border text-left transition ${
+                          sel ? "border-accent bg-accent-dim" : "border-border bg-bg-2 hover:border-border-2"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span
+                            className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition ${
+                              sel ? "bg-accent border-accent" : "border-border-2"
+                            }`}
+                          >
+                            {sel && (
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{e.nombre}</p>
+                            {e.descripcion && <p className="text-[12px] text-text-2 truncate">{e.descripcion}</p>}
+                          </div>
+                        </div>
+                        <p className="text-sm text-accent font-medium whitespace-nowrap">
+                          {e.precio} € <span className="text-text-2 font-normal">/ {e.tipo_cobro === "por_dia" ? "día" : "ud."}</span>
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -186,22 +243,40 @@ export default function Vehiculo() {
                 ) : precio ? (
                   <div className="space-y-2 text-sm">
                     {!precio.disponible && (
-                      <p className="text-red-600 text-[13px] mb-2">
-                        No disponible en estas fechas.
-                      </p>
+                      <p className="text-red-600 text-[13px] mb-2">No disponible en estas fechas.</p>
                     )}
                     <div className="flex justify-between text-text-2">
                       <span>{precio.num_dias} días × {precio.precio_dia_base} €</span>
-                      <span>{precio.subtotal_vehiculo} €</span>
+                      <span>{fmt(subtotalVehiculo)} €</span>
                     </div>
+
+                    {/* Líneas de extras seleccionados */}
+                    {extrasCalculados.map(({ extra, subtotal }) => (
+                      <div key={extra.id} className="flex justify-between text-text-2">
+                        <span className="truncate pr-2">
+                          {extra.nombre}
+                          {extra.tipo_cobro === "por_dia" && (
+                            <span className="text-[12px]"> ({precio.num_dias}d)</span>
+                          )}
+                        </span>
+                        <span className="whitespace-nowrap">{fmt(subtotal)} €</span>
+                      </div>
+                    ))}
+
                     <div className="flex justify-between text-text-2">
                       <span>Fianza (depósito)</span>
                       <span>{precio.fianza} €</span>
                     </div>
+
                     <div className="flex justify-between font-medium text-base border-t border-border pt-2 mt-2">
                       <span>Total alquiler</span>
-                      <span>{precio.subtotal_vehiculo} €</span>
+                      <span>{fmt(totalAlquiler)} €</span>
                     </div>
+                    {totalExtras > 0 && (
+                      <p className="text-[11px] text-text-2">
+                        Incluye {fmt(totalExtras)} € en extras.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <p className="text-[13px] text-text-2">No se pudo calcular el precio.</p>

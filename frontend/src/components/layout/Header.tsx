@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const CATEGORIAS = [
   { slug: "turismo", label: "Turismo", icon: "M3 13l2-5h14l2 5M5 13h14v4H5z" },
@@ -16,10 +16,14 @@ const ENLACES = [
 ];
 
 export default function Header() {
+  const location = useLocation();
   const [megaOpen, setMegaOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Header transparente sobre el hero; sólido al hacer scroll.
+  // Solo la Home tiene hero oscuro detrás; el resto de páginas tienen
+  // fondo claro y el header debe nacer ya sólido (texto oscuro visible).
+  const tieneHero = location.pathname === "/";
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     onScroll();
@@ -27,7 +31,8 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const solido = scrolled || megaOpen;
+  // Sólido si: no hay hero, o se ha hecho scroll, o el megamenú está abierto.
+  const solido = !tieneHero || scrolled || megaOpen;
 
   return (
     <header
@@ -52,7 +57,7 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Navegación a la IZQUIERDA, junto al logo */}
+        {/* Navegación a la izquierda, junto al logo */}
         <nav
           className="flex items-center gap-6 text-sm transition-colors"
           style={{ color: solido ? "var(--text)" : "rgba(255,255,255,0.92)" }}
@@ -62,9 +67,18 @@ export default function Header() {
             onMouseEnter={() => setMegaOpen(true)}
             onMouseLeave={() => setMegaOpen(false)}
           >
-            <button className="flex items-center gap-1.5 py-5" style={{ color: solido ? "var(--accent)" : "#fff" }}>
+            {/* Botón Alquilar: sin fondo hover, solo cambia color de texto */}
+            <button
+              className="flex items-center gap-1.5 py-5 bg-transparent transition-colors"
+              style={{ color: solido ? "var(--accent)" : "#fff" }}
+            >
               Alquilar
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2"
+                className="transition-transform duration-200"
+                style={{ transform: megaOpen ? "rotate(180deg)" : "none" }}
+              >
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </button>
@@ -76,6 +90,7 @@ export default function Header() {
                     <Link
                       key={c.slug}
                       to={`/modelos${c.slug !== "todos" ? `?categoria=${c.slug}` : ""}`}
+                      onClick={() => setMegaOpen(false)}
                       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition ${
                         c.slug === "todos"
                           ? "bg-accent text-white"
@@ -91,7 +106,12 @@ export default function Header() {
                 </div>
                 <div className="flex flex-col gap-2 border-l border-border pl-6">
                   {ENLACES.map((e) => (
-                    <Link key={e.to} to={e.to} className="text-[13px] text-text hover:text-accent transition">
+                    <Link
+                      key={e.to}
+                      to={e.to}
+                      onClick={() => setMegaOpen(false)}
+                      className="text-[13px] text-text hover:text-accent transition"
+                    >
                       {e.label}
                     </Link>
                   ))}
@@ -105,7 +125,7 @@ export default function Header() {
           <Link to="/contacto" className="hover:text-accent transition" style={{ color: "inherit" }}>Contacto</Link>
         </nav>
 
-        {/* Iconos usuario / admin a la DERECHA */}
+        {/* Iconos usuario / admin a la derecha */}
         <div className="ml-auto flex items-center gap-2">
           <Link
             to="/reservas"
@@ -131,7 +151,7 @@ export default function Header() {
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-              <path d="M19 12a7 7 0 00-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 00-1.7-1L16.5 2h-4l-.3 2.5a7 7 0 00-1.7 1l-2.4-1-2 3.5L5.1 11a7 7 0 000 2l-2 1.5 2 3.5 2.4-1a7 7 0 001.7 1l.3 2.5h4l.3-2.5a7 7 0 001.7-1l2.4 1 2-3.5-2-1.5a7 7 0 00.1-1z" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
             </svg>
           </a>
         </div>
