@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useHero } from "@/hooks/useHero";
 
 const CATEGORIAS = [
   { slug: "turismo", label: "Turismo", icon: "M3 13l2-5h14l2 5M5 13h14v4H5z" },
@@ -16,13 +17,12 @@ const ENLACES = [
 ];
 
 export default function Header() {
-  const location = useLocation();
+  const { tieneHeroOscuro } = useHero();
   const [megaOpen, setMegaOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Solo la Home tiene hero oscuro detrás; el resto de páginas tienen
-  // fondo claro y el header debe nacer ya sólido (texto oscuro visible).
-  const tieneHero = location.pathname === "/";
+  // El header es transparente solo si la página tiene hero oscuro detrás.
+  const tieneHero = tieneHeroOscuro;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);

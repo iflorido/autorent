@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import VehiculoCard from "@/components/ui/VehiculoCard";
+import BuscadorSeccion from "@/components/ui/BuscadorSeccion";
 import FadeIn from "@/components/ui/FadeIn";
 import { getVehiculos } from "@/lib/api";
+import { useHeroOscuro } from "@/hooks/useHeroOscuro";
 import type { VehiculoList } from "@/types";
 
 const FILTROS = [
@@ -13,6 +15,7 @@ const FILTROS = [
 ];
 
 export default function Modelos() {
+  useHeroOscuro();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vehiculos, setVehiculos] = useState<VehiculoList[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -45,33 +48,33 @@ export default function Modelos() {
   const hayFechas = fechaInicio && fechaFin;
 
   return (
-    <div className="pt-16">
-      {/* Cabecera de la sección */}
-      <div className="bg-bg-2 border-b border-border">
-        <div className="max-w-container mx-auto px-6 py-10">
-          <h1 className="text-3xl font-medium">Nuestros modelos</h1>
-          <p className="text-text-2 mt-2">
-            {hayFechas
-              ? `Vehículos disponibles del ${fechaInicio} al ${fechaFin}.`
-              : "Explora toda nuestra flota. Selecciona fechas para ver disponibilidad."}
-          </p>
+    <div>
+      {/* Cabecera con buscador integrado */}
+      <BuscadorSeccion
+        titulo="Nuestros modelos"
+        subtitulo={
+          hayFechas
+            ? `Vehículos disponibles del ${fechaInicio} al ${fechaFin}.`
+            : "Explora toda nuestra flota. Selecciona fechas para ver disponibilidad."
+        }
+      />
 
-          {/* Filtros de categoría */}
-          <div className="flex flex-wrap gap-2 mt-6">
-            {FILTROS.map((f) => (
-              <button
-                key={f.slug}
-                onClick={() => cambiarCategoria(f.slug)}
-                className={`px-4 py-2 rounded-lg text-sm transition ${
-                  categoria === f.slug
-                    ? "bg-accent text-white"
-                    : "bg-surface-2 text-text hover:bg-surface-3"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+      {/* Filtros de categoría */}
+      <div className="max-w-container mx-auto px-6 pt-8">
+        <div className="flex flex-wrap gap-2">
+          {FILTROS.map((f) => (
+            <button
+              key={f.slug}
+              onClick={() => cambiarCategoria(f.slug)}
+              className={`px-4 py-2 rounded-lg text-sm transition ${
+                categoria === f.slug
+                  ? "bg-accent text-white"
+                  : "bg-surface-2 text-text hover:bg-surface-3"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
 

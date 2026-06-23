@@ -5,6 +5,7 @@ import CarruselVehiculos from "@/components/ui/CarruselVehiculos";
 import OficinasCercanas from "@/components/ui/OficinasCercanas";
 import FadeIn from "@/components/ui/FadeIn";
 import { getSedes, getVehiculos } from "@/lib/api";
+import { useHeroOscuro } from "@/hooks/useHeroOscuro";
 import type { Sede, VehiculoList } from "@/types";
 
 const VENTAJAS = [
@@ -20,7 +21,14 @@ const CATEGORIAS = [
   { slug: "industrial", label: "Industrial", desc: "Carga y volumen para profesionales." },
 ];
 
+const PASOS = [
+  { n: "1", titulo: "Elige fechas y vehículo", texto: "Busca por fechas y compara nuestra flota disponible." },
+  { n: "2", titulo: "Añade tus extras", texto: "Personaliza tu alquiler con seguros, GPS y más." },
+  { n: "3", titulo: "Confirma y viaja", texto: "Reserva en minutos y recoge tu vehículo." },
+];
+
 export default function Home() {
+  useHeroOscuro(); // header transparente sobre el hero
   const [vehiculos, setVehiculos] = useState<VehiculoList[]>([]);
   const [sedes, setSedes] = useState<Sede[]>([]);
 
@@ -31,7 +39,7 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero a pantalla con imagen de fondo (el header transparente va encima) */}
+      {/* Hero a pantalla con imagen de fondo */}
       <section className="relative min-h-[88vh] flex items-center">
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -54,7 +62,6 @@ export default function Home() {
           </FadeIn>
         </div>
 
-        {/* Buscador superpuesto en el borde inferior del hero */}
         <div className="absolute left-0 right-0 bottom-0 translate-y-1/2 z-[20]">
           <div className="max-w-container mx-auto px-6">
             <FadeIn delay={150}>
@@ -71,61 +78,86 @@ export default function Home() {
         </FadeIn>
       </section>
 
-      {/* Ventajas */}
+      {/* Ventajas — versión más vistosa: tarjetas con fondo, icono destacado y hover */}
       <section className="max-w-container mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {VENTAJAS.map((v, i) => (
             <FadeIn key={v.titulo} delay={i * 80}>
-              <div className="flex flex-col gap-2">
-                <span className="w-11 h-11 rounded-xl bg-accent-dim flex items-center justify-center text-accent">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <div className="group h-full bg-bg-2 border border-border rounded-2xl p-6 hover:shadow-soft hover:-translate-y-1 transition-all duration-300">
+                <span className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path d={v.icon} />
                   </svg>
                 </span>
-                <p className="font-medium mt-1">{v.titulo}</p>
-                <p className="text-[13px] text-text-2 leading-relaxed">{v.texto}</p>
+                <p className="font-display font-medium text-lg">{v.titulo}</p>
+                <p className="text-[13px] text-text-2 leading-relaxed mt-1">{v.texto}</p>
               </div>
             </FadeIn>
           ))}
         </div>
       </section>
 
-      {/* Categorías */}
+      {/* Cómo funciona — bloque nuevo con pasos numerados */}
       <section className="bg-bg-2 border-y border-border py-16">
         <div className="max-w-container mx-auto px-6">
           <FadeIn>
-            <h2 className="text-2xl font-medium mb-8 text-center">Elige tu tipo de vehículo</h2>
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-medium">Reservar es muy fácil</h2>
+              <p className="text-text-2 mt-2">En tres pasos tienes tu vehículo listo.</p>
+            </div>
           </FadeIn>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {CATEGORIAS.map((c, i) => (
-              <FadeIn key={c.slug} delay={i * 100}>
-                <Link
-                  to={`/modelos?categoria=${c.slug}`}
-                  className="group block bg-bg border border-border rounded-xl p-6 hover:border-accent transition"
-                >
-                  <div className="h-32 rounded-lg bg-accent-dim mb-4 flex items-center justify-center text-accent">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
-                      <path d="M3 13h18v4H3zM5 13V8h11l3 5" />
-                    </svg>
-                  </div>
-                  <p className="font-medium text-lg group-hover:text-accent transition">{c.label}</p>
-                  <p className="text-[13px] text-text-2 mt-1">{c.desc}</p>
-                </Link>
+            {PASOS.map((p, i) => (
+              <FadeIn key={p.n} delay={i * 100}>
+                <div className="relative bg-bg border border-border rounded-2xl p-6 h-full">
+                  <span className="absolute -top-4 left-6 w-9 h-9 rounded-full bg-accent text-white font-display font-medium flex items-center justify-center shadow-soft">
+                    {p.n}
+                  </span>
+                  <p className="font-display font-medium text-lg mt-3">{p.titulo}</p>
+                  <p className="text-[13px] text-text-2 leading-relaxed mt-1">{p.texto}</p>
+                </div>
               </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Oficinas cercanas */}
+      {/* Categorías */}
       <section className="max-w-container mx-auto px-6 py-16">
         <FadeIn>
-          <OficinasCercanas sedes={sedes} />
+          <h2 className="text-2xl font-medium mb-8 text-center">Elige tu tipo de vehículo</h2>
         </FadeIn>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {CATEGORIAS.map((c, i) => (
+            <FadeIn key={c.slug} delay={i * 100}>
+              <Link
+                to={`/modelos?categoria=${c.slug}`}
+                className="group block bg-bg-2 border border-border rounded-2xl p-6 hover:border-accent hover:shadow-soft transition-all duration-300"
+              >
+                <div className="h-32 rounded-xl bg-accent-dim mb-4 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-colors">
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3">
+                    <path d="M3 13h18v4H3zM5 13V8h11l3 5" />
+                  </svg>
+                </div>
+                <p className="font-display font-medium text-lg group-hover:text-accent transition">{c.label}</p>
+                <p className="text-[13px] text-text-2 mt-1">{c.desc}</p>
+              </Link>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* Oficinas cercanas */}
+      <section className="bg-bg-2 border-y border-border py-16">
+        <div className="max-w-container mx-auto px-6">
+          <FadeIn>
+            <OficinasCercanas sedes={sedes} />
+          </FadeIn>
+        </div>
       </section>
 
       {/* CTA final */}
-      <section className="max-w-container mx-auto px-6 pb-20">
+      <section className="max-w-container mx-auto px-6 py-20">
         <FadeIn>
           <div
             className="rounded-2xl px-8 py-14 text-center bg-cover bg-center"
