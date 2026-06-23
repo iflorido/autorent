@@ -10,7 +10,7 @@ export default function Footer() {
             <img
               src="/images/logo-1181x535px.png"
               alt="AutoRent"
-              className="h-9 w-auto"
+              className="h-logo-footer w-auto"
             />
           </div>
           <p className="text-[13px] text-text-2 leading-relaxed">
