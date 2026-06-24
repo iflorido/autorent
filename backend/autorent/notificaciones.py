@@ -444,3 +444,63 @@ def enviar_correo_documentos_recibidos_cliente(reserva):
         logger.error("Fallo confirmando recepción de docs al cliente de %s: %s",
                      reserva.localizador, exc)
         return False
+
+
+def enviar_correo_documentos_aprobados(reserva):
+    """Avisa al cliente de que su documentación ha sido aprobada."""
+    from core.models import EmailConfig
+    site = _site_config()
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    nombre_empresa = site.nombre or "AutoRent"
+
+    asunto = f"Documentación aprobada — reserva {reserva.localizador}"
+    texto = (
+        f"Hola {reserva.cliente.nombre},\n\n"
+        f"Tu documentación para la reserva {reserva.localizador} ha sido revisada y "
+        f"APROBADA. ¡Todo correcto!\n\n"
+        f"Recuerda que deberás presentar esta misma documentación en original al recoger "
+        f"el vehículo, junto con una tarjeta de crédito válida a nombre del conductor "
+        f"titular para la fianza.\n\n"
+        f"Vehículo: {reserva.vehiculo.nombre}\n"
+        f"Recogida: {reserva.fecha_inicio}\n"
+        f"Devolución: {reserva.fecha_fin}\n\n"
+        f"Gracias por confiar en {nombre_empresa}."
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#0891b2">Documentación aprobada</h2>
+      <p>Hola {escape(reserva.cliente.nombre)},</p>
+      <p>Tu documentación para la reserva <strong>{reserva.localizador}</strong> ha sido
+         revisada y <strong style="color:#059669">aprobada</strong>. ¡Todo correcto!</p>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
+        <p style="margin:0;font-size:14px">Recuerda presentar esta misma documentación en
+           original al recoger el vehículo, junto con una <strong>tarjeta de crédito</strong>
+           válida a nombre del titular para la fianza.</p>
+      </div>
+      <p style="color:#4b5c78;font-size:14px">Gracias por confiar en {escape(nombre_empresa)}.</p>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(asunto, texto, from_email=remitente,
+                                     to=[reserva.cliente.email], connection=connection)
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo enviando aprobación de %s: %s", reserva.localizador, exc)
+        return False
+
+
+def _motivos_rechazo(reserva):
+    """Recopila las notas de revisión de los documentos rechazados."""
+    motivos = []
+    for d in reserva.documentos.filter(estado="rechazado"):
+        quien = d.conductor.nombre_completo if d.conductor_id else reserva.cliente.nombre_completo
+        nota = (d.notas_revision or "").strip()
+        etiqueta = f"{d.get_tipo_display()} ({quien})"
+        motivos.append(f"{etiqueta}: {nota}" if nota else etiqueta)
+    return "; ".join(motivos)

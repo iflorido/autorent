@@ -553,6 +553,12 @@ def finalizar_subida(request, token):
     reserva = t.reserva
     t.marcar_usado()
 
+    # Al subir documentación nueva, reiniciar el estado notificado para que el
+    # ciclo de revisión pueda volver a avisar (aprobada/rechazada) tras revisar.
+    if reserva.doc_estado_notificado:
+        reserva.doc_estado_notificado = ""
+        reserva.save(update_fields=["doc_estado_notificado"])
+
     # Avisos por correo (tolerantes a fallos: no rompen la respuesta).
     from .notificaciones import (
         enviar_correo_documentos_subidos_admin,

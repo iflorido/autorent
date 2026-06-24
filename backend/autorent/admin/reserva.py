@@ -112,28 +112,53 @@ class ReservaAdmin(admin.ModelAdmin):
         obj.recalcular_totales()
 
     def save_related(self, request, form, formsets, change):
-        # Tras guardar los inlines (extras), recalcular de nuevo el total.
+        # Tras guardar los inlines (extras y documentos), recalcular el total.
         super().save_related(request, form, formsets, change)
-        form.instance.recalcular_totales()
+        reserva = form.instance
+        reserva.recalcular_totales()
+        # Revisar el estado de la documentación y avisar al cliente si cambió.
+        self._notificar_estado_documentacion(request, reserva)
 
-    actions = ["rechazar_documentacion"]
+    def _notificar_estado_documentacion(self, request, reserva):
+        """Envía el correo adecuado al cliente según el estado de los documentos.
 
-    @admin.action(description="Rechazar documentación y reenviar enlace al cliente")
-    def rechazar_documentacion(self, request, queryset):
-        """Marca los documentos como rechazados, genera un token nuevo y avisa."""
-        from ..models import DocumentoReserva, TokenSubida
-        from ..notificaciones import enviar_correo_documentos_rechazados
-        enviadas = 0
-        for reserva in queryset:
-            reserva.documentos.update(estado=DocumentoReserva.Estado.RECHAZADO)
-            token = TokenSubida.generar(reserva, dias_validez=7)
-            if enviar_correo_documentos_rechazados(reserva, token):
-                enviadas += 1
-        self.message_user(
-            request,
-            f"Documentación rechazada en {queryset.count()} reserva(s). "
-            f"Correo de nuevo enlace enviado: {enviadas}.",
+        Solo envía si el estado cambió respecto al último notificado, para no
+        repetir correos al guardar la ficha varias veces.
+          - todos aprobados  -> correo de aprobación.
+          - alguno rechazado -> correo de rechazo con motivos + nuevo enlace.
+          - pendiente / sin documentos -> no se avisa.
+        """
+        from ..models import TokenSubida
+        from ..notificaciones import (
+            enviar_correo_documentos_aprobados,
+            enviar_correo_documentos_rechazados,
+            _motivos_rechazo,
         )
+
+        estado = reserva.estado_documentacion()  # sin_documentos|pendiente|rechazada|aprobada
+        if estado in ("sin_documentos", "pendiente"):
+            return  # nada que notificar todavía
+
+        # Evitar reenvíos: solo si cambia respecto a lo ya notificado.
+        if reserva.doc_estado_notificado == estado:
+            return
+
+        if estado == "aprobada":
+            if enviar_correo_documentos_aprobados(reserva):
+                self.message_user(request, "Cliente avisado: documentación aprobada.")
+        elif estado == "rechazada":
+            # Nuevo enlace para volver a subir toda la documentación.
+            token = TokenSubida.generar(reserva, dias_validez=7)
+            motivo = _motivos_rechazo(reserva)
+            if enviar_correo_documentos_rechazados(reserva, token, motivo=motivo):
+                self.message_user(
+                    request,
+                    "Cliente avisado: documentación rechazada, se envió un nuevo enlace.",
+                )
+
+        # Registrar el estado notificado para no repetir el correo.
+        reserva.doc_estado_notificado = estado
+        reserva.save(update_fields=["doc_estado_notificado"])
 
 
 @admin.register(Pago)

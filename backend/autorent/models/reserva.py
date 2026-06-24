@@ -135,6 +135,13 @@ class Reserva(models.Model):
     )
 
     notas = models.TextField(blank=True, verbose_name="Notas")
+    # Último estado de documentación del que se avisó al cliente, para no
+    # reenviar el mismo correo cada vez que se guarda la ficha.
+    # Valores: "", "aprobada", "rechazada".
+    doc_estado_notificado = models.CharField(
+        max_length=12, blank=True, default="", editable=False,
+        verbose_name="Estado doc. notificado",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -190,6 +197,26 @@ class Reserva(models.Model):
                 "subtotal_extras", "fianza", "total",
             ])
         return self.total
+
+    def estado_documentacion(self):
+        """Estado global de la documentación de la reserva.
+
+        Devuelve:
+          - "sin_documentos": no hay ningún documento subido.
+          - "pendiente": hay documentos pero alguno sigue pendiente de revisión.
+          - "rechazada": no queda ninguno pendiente y al menos uno está rechazado.
+          - "aprobada": hay documentos y todos están aprobados.
+        """
+        docs = list(self.documentos.all())
+        if not docs:
+            return "sin_documentos"
+        estados = {d.estado for d in docs}
+        # Comparamos los valores como cadenas para no acoplar al Enum.
+        if "pendiente" in estados:
+            return "pendiente"
+        if "rechazado" in estados:
+            return "rechazada"
+        return "aprobada"
 
 
 class ReservaExtra(models.Model):
