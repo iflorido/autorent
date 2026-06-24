@@ -101,6 +101,15 @@ export default function Reserva() {
       setError("El email no parece válido.");
       return false;
     }
+    if (!cliente.carnet_numero?.trim() || !cliente.carnet_caducidad) {
+      setError("Indica el número y la caducidad de tu carnet de conducir.");
+      return false;
+    }
+    // El carnet no puede estar caducado al inicio del alquiler.
+    if (cliente.carnet_caducidad < fechaInicio) {
+      setError("Tu carnet de conducir caduca antes del inicio del alquiler.");
+      return false;
+    }
     return true;
   }
 
@@ -186,7 +195,8 @@ export default function Reserva() {
                   <Campo label="Teléfono *" value={cliente.telefono} onChange={(v) => actualizar("telefono", v)} />
                   <Campo label="Email *" value={cliente.email} onChange={(v) => actualizar("email", v)} className="sm:col-span-2" />
                   <Campo label="Fecha de nacimiento" type="date" value={cliente.fecha_nacimiento || ""} onChange={(v) => actualizar("fecha_nacimiento", v)} />
-                  <Campo label="Nº carnet de conducir" value={cliente.carnet_numero || ""} onChange={(v) => actualizar("carnet_numero", v)} />
+                  <Campo label="Nº carnet de conducir *" value={cliente.carnet_numero || ""} onChange={(v) => actualizar("carnet_numero", v)} />
+                  <Campo label="Caducidad del carnet *" type="date" value={cliente.carnet_caducidad || ""} onChange={(v) => actualizar("carnet_caducidad", v)} />
                   <Campo label="Dirección" value={cliente.direccion || ""} onChange={(v) => actualizar("direccion", v)} className="sm:col-span-2" />
                   <Campo label="Población" value={cliente.poblacion || ""} onChange={(v) => actualizar("poblacion", v)} />
                   <Campo label="Código postal" value={cliente.cp || ""} onChange={(v) => actualizar("cp", v)} />
