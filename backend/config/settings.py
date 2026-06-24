@@ -252,6 +252,8 @@ JAZZMIN_SETTINGS = {
         # core
         "core.SiteConfig": "fas fa-building",
         "core.EmailConfig": "fas fa-envelope",
+        "core.FrontendConfig": "fas fa-palette",
+        "core.Sede": "fas fa-map-marker-alt",
         # django_celery_beat
         "django_celery_beat.PeriodicTask": "fas fa-tasks",
         "django_celery_beat.IntervalSchedule": "fas fa-hourglass-half",
