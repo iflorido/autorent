@@ -540,9 +540,21 @@ def finalizar_subida(request, token):
     """Marca el token como usado al terminar la subida (un solo uso).
 
     POST /api/subida/<token>/finalizar/
+    Al finalizar, avisa a la empresa (documentación recibida) y al cliente
+    (confirmación de recepción).
     """
     t, err = _token_valido_o_respuesta(token)
     if err:
         return err
+    reserva = t.reserva
     t.marcar_usado()
+
+    # Avisos por correo (tolerantes a fallos: no rompen la respuesta).
+    from .notificaciones import (
+        enviar_correo_documentos_subidos_admin,
+        enviar_correo_documentos_recibidos_cliente,
+    )
+    enviar_correo_documentos_subidos_admin(reserva)
+    enviar_correo_documentos_recibidos_cliente(reserva)
+
     return Response({"finalizado": True})

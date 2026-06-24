@@ -311,3 +311,128 @@ def enviar_correo_documentos_rechazados(reserva, token_subida, motivo=""):
     except Exception as exc:  # noqa: BLE001
         logger.error("Fallo enviando correo de rechazo de %s: %s", reserva.localizador, exc)
         return False
+
+
+def _lista_documentos_texto(reserva):
+    """Devuelve una lista legible de los documentos subidos, por persona."""
+    lineas = []
+    # Documentos del titular (sin conductor).
+    titular = reserva.documentos.filter(conductor__isnull=True)
+    if titular.exists():
+        lineas.append(f"Titular ({reserva.cliente.nombre_completo}):")
+        for d in titular:
+            lineas.append(f"  - {d.get_tipo_display()}")
+    # Documentos de cada conductor adicional.
+    for co in reserva.conductores_adicionales.all():
+        docs = reserva.documentos.filter(conductor=co)
+        if docs.exists():
+            lineas.append(f"Conductor adicional ({co.nombre_completo}):")
+            for d in docs:
+                lineas.append(f"  - {d.get_tipo_display()}")
+    return "\n".join(lineas) if lineas else "  (sin documentos)"
+
+
+def enviar_correo_documentos_subidos_admin(reserva):
+    """Avisa a la empresa de que el cliente ha subido su documentación."""
+    from core.models import EmailConfig
+    site = _site_config()
+    email_empresa = (site.email or "").strip()
+    if not email_empresa:
+        logger.warning("SiteConfig.email vacío: no se avisa de docs subidos de %s",
+                       reserva.localizador)
+        return False
+
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    docs = _lista_documentos_texto(reserva)
+    n_docs = reserva.documentos.count()
+
+    asunto = f"Documentación recibida — reserva {reserva.localizador}"
+    texto = (
+        f"El cliente de la reserva {reserva.localizador} ha subido su documentación.\n\n"
+        f"Cliente: {reserva.cliente.nombre_completo} ({reserva.cliente.nif})\n"
+        f"Vehículo: {reserva.vehiculo.nombre}\n"
+        f"Fechas: {reserva.fecha_inicio} → {reserva.fecha_fin}\n\n"
+        f"Documentos subidos ({n_docs}):\n{docs}\n\n"
+        f"Revísala en el panel de administración. Si algo no es válido, usa la acción "
+        f"'Rechazar documentación' para pedir al cliente que la vuelva a subir."
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#0891b2">Documentación recibida</h2>
+      <p>El cliente de la reserva <strong>{reserva.localizador}</strong> ha subido su documentación.</p>
+      <table style="width:100%;border-collapse:collapse;margin:12px 0">
+        <tr><td style="padding:5px 0;color:#4b5c78">Cliente</td>
+            <td style="text-align:right">{escape(reserva.cliente.nombre_completo)} ({escape(reserva.cliente.nif)})</td></tr>
+        <tr><td style="padding:5px 0;color:#4b5c78">Vehículo</td>
+            <td style="text-align:right">{escape(reserva.vehiculo.nombre)}</td></tr>
+        <tr><td style="padding:5px 0;color:#4b5c78">Documentos</td>
+            <td style="text-align:right"><strong>{n_docs}</strong></td></tr>
+      </table>
+      <pre style="background:#f1f5f9;border-radius:8px;padding:12px;font-size:13px;white-space:pre-wrap">{escape(docs)}</pre>
+      <p style="font-size:13px;color:#4b5c78">Revísala en el panel de administración.</p>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(asunto, texto, from_email=remitente,
+                                     to=[email_empresa], connection=connection)
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo avisando a la empresa de docs subidos de %s: %s",
+                     reserva.localizador, exc)
+        return False
+
+
+def enviar_correo_documentos_recibidos_cliente(reserva):
+    """Confirma al cliente que su documentación se recibió y explica los pasos."""
+    from core.models import EmailConfig
+    site = _site_config()
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    nombre_empresa = site.nombre or "AutoRent"
+
+    asunto = f"Documentación recibida — reserva {reserva.localizador}"
+    texto = (
+        f"Hola {reserva.cliente.nombre},\n\n"
+        f"Hemos recibido correctamente la documentación de tu reserva {reserva.localizador}.\n\n"
+        f"Uno de nuestros gestores la revisará. Si queda aprobada, te enviaremos un "
+        f"correo de confirmación. Si hubiera cualquier problema con algún documento, "
+        f"te avisaremos con un nuevo enlace para volver a subirlo.\n\n"
+        f"IMPORTANTE: deberás presentar esta misma documentación (en original) al recoger "
+        f"el vehículo. Los documentos deben coincidir con los que acabas de subir.\n\n"
+        f"Gracias por tu colaboración.\n{nombre_empresa}"
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#0891b2">¡Documentación recibida!</h2>
+      <p>Hola {escape(reserva.cliente.nombre)},</p>
+      <p>Hemos recibido correctamente la documentación de tu reserva
+         <strong>{reserva.localizador}</strong>.</p>
+      <p>Uno de nuestros gestores la revisará. Si queda aprobada, te enviaremos un correo
+         de confirmación. Si hubiera algún problema, te avisaremos con un nuevo enlace.</p>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
+        <p style="margin:0;font-size:14px"><strong>Importante:</strong> deberás presentar esta
+           misma documentación (en original) al recoger el vehículo. Los documentos deben
+           coincidir con los que acabas de subir.</p>
+      </div>
+      <p style="color:#4b5c78;font-size:14px">Gracias por tu colaboración. {escape(nombre_empresa)}.</p>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(asunto, texto, from_email=remitente,
+                                     to=[reserva.cliente.email], connection=connection)
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo confirmando recepción de docs al cliente de %s: %s",
+                     reserva.localizador, exc)
+        return False
