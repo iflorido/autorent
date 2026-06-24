@@ -210,6 +210,54 @@ class Vehiculo(models.Model):
         )
         return not reservas.exists()
 
+    # --- Requisitos legales del conductor ---
+
+    def requisitos_conductor(self):
+        """Edad mínima y antigüedad de carnet (años) según la categoría.
+
+        Turismos: 21 años y 2 de antigüedad.
+        Furgonetas, campers e industriales: 23 años y 2 de antigüedad.
+        (Según las Condiciones Generales de Contratación.)
+        """
+        if self.categoria == self.Categoria.TURISMO:
+            return {"edad_min": 21, "antiguedad_min": 2}
+        return {"edad_min": 23, "antiguedad_min": 2}
+
+    @staticmethod
+    def _anios_entre(desde, hasta):
+        """Años cumplidos entre dos fechas."""
+        if not desde or not hasta:
+            return 0
+        anios = hasta.year - desde.year
+        if (hasta.month, hasta.day) < (desde.month, desde.day):
+            anios -= 1
+        return anios
+
+    def validar_conductor(self, fecha_nacimiento, carnet_caducidad, fecha_inicio,
+                          carnet_expedicion=None):
+        """Devuelve None si el conductor cumple, o un mensaje de error si no.
+
+        Comprueba edad mínima a la fecha de inicio y que el carnet no esté
+        caducado. La antigüedad del carnet se valida solo si se aporta la
+        fecha de expedición (en el asistente actual no la pedimos).
+        """
+        req = self.requisitos_conductor()
+        edad = self._anios_entre(fecha_nacimiento, fecha_inicio)
+        if edad < req["edad_min"]:
+            return (
+                f"La edad mínima para este vehículo es de {req['edad_min']} años."
+            )
+        if carnet_caducidad and carnet_caducidad < fecha_inicio:
+            return "El carnet de conducir caduca antes del inicio del alquiler."
+        if carnet_expedicion is not None:
+            antiguedad = self._anios_entre(carnet_expedicion, fecha_inicio)
+            if antiguedad < req["antiguedad_min"]:
+                return (
+                    f"Se requieren al menos {req['antiguedad_min']} años de "
+                    "antigüedad del carnet."
+                )
+        return None
+
 
 class FotoVehiculo(models.Model):
     vehiculo = models.ForeignKey(

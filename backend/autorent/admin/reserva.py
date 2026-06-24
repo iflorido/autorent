@@ -9,6 +9,7 @@ from django.contrib import admin
 from ..models import (
     Cancelacion,
     Cliente,
+    ConductorAdicional,
     DocumentoReserva,
     Factura,
     Pago,
@@ -36,6 +37,12 @@ class ReservaExtraInline(admin.TabularInline):
     model = ReservaExtra
     extra = 0
     fields = ("extra", "cantidad", "precio_congelado", "tipo_cobro_congelado")
+
+
+class ConductorAdicionalInline(admin.TabularInline):
+    model = ConductorAdicional
+    extra = 0
+    fields = ("nombre", "apellidos", "nif", "fecha_nacimiento", "carnet_numero", "carnet_caducidad")
 
 
 class DocumentoReservaInline(admin.TabularInline):
@@ -68,7 +75,7 @@ class ReservaAdmin(admin.ModelAdmin):
         "localizador", "num_dias", "precio_dia_base", "subtotal_vehiculo",
         "subtotal_extras", "total", "created_at", "updated_at",
     )
-    inlines = [ReservaExtraInline, DocumentoReservaInline, PagoInline]
+    inlines = [ReservaExtraInline, ConductorAdicionalInline, DocumentoReservaInline, PagoInline]
     fieldsets = (
         ("Reserva", {
             "fields": ("localizador", "cliente", "vehiculo",

@@ -127,20 +127,33 @@ class FechaOpcionalField(serializers.DateField):
 
 
 class ClienteEntradaSerializer(serializers.Serializer):
-    """Datos del cliente que llegan del asistente de reserva."""
+    """Datos del cliente que llegan del asistente de reserva.
+
+    Para formalizar el contrato de alquiler todos los datos son obligatorios.
+    """
     nombre = serializers.CharField(max_length=120)
-    apellidos = serializers.CharField(max_length=160, required=False, allow_blank=True)
+    apellidos = serializers.CharField(max_length=160)
     nif = serializers.CharField(max_length=20)
     email = serializers.EmailField()
     telefono = serializers.CharField(max_length=20)
-    fecha_nacimiento = FechaOpcionalField(required=False, allow_null=True)
-    direccion = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    poblacion = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    cp = serializers.CharField(max_length=10, required=False, allow_blank=True)
-    provincia = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    pais = serializers.CharField(max_length=60, required=False, allow_blank=True)
-    carnet_numero = serializers.CharField(max_length=40, required=False, allow_blank=True)
-    carnet_caducidad = FechaOpcionalField(required=False, allow_null=True)
+    fecha_nacimiento = serializers.DateField()
+    direccion = serializers.CharField(max_length=255)
+    poblacion = serializers.CharField(max_length=100)
+    cp = serializers.CharField(max_length=10)
+    provincia = serializers.CharField(max_length=100)
+    pais = serializers.CharField(max_length=60, required=False, allow_blank=True, default="España")
+    carnet_numero = serializers.CharField(max_length=40)
+    carnet_caducidad = serializers.DateField()
+
+
+class ConductorAdicionalSerializer(serializers.Serializer):
+    """Conductor adicional con sus datos legales (todos obligatorios)."""
+    nombre = serializers.CharField(max_length=120)
+    apellidos = serializers.CharField(max_length=160)
+    nif = serializers.CharField(max_length=20)
+    fecha_nacimiento = serializers.DateField()
+    carnet_numero = serializers.CharField(max_length=40)
+    carnet_caducidad = serializers.DateField()
 
 
 class ExtraEntradaSerializer(serializers.Serializer):
@@ -165,6 +178,7 @@ class CrearReservaSerializer(serializers.Serializer):
     )
     cliente = ClienteEntradaSerializer()
     extras = ExtraEntradaSerializer(many=True, required=False, default=list)
+    conductores_adicionales = ConductorAdicionalSerializer(many=True, required=False, default=list)
     acepta_condiciones = serializers.BooleanField()
 
     def validate_acepta_condiciones(self, value):

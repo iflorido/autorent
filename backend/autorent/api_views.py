@@ -209,6 +209,27 @@ def crear_reserva(request):
 
     cdatos = datos["cliente"]
 
+    # Validar requisitos legales del conductor principal (edad / carnet).
+    err_cond = vehiculo.validar_conductor(
+        cdatos["fecha_nacimiento"], cdatos["carnet_caducidad"], fi,
+    )
+    if err_cond:
+        return Response(
+            {"detail": f"Conductor principal: {err_cond}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validar cada conductor adicional con los mismos requisitos.
+    for i, cond in enumerate(datos.get("conductores_adicionales", []), start=1):
+        err = vehiculo.validar_conductor(
+            cond["fecha_nacimiento"], cond["carnet_caducidad"], fi,
+        )
+        if err:
+            return Response(
+                {"detail": f"Conductor adicional {i}: {err}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     try:
         with transaction.atomic():
             # 3) Cliente: reutiliza si el NIF ya existe, actualizando sus datos.
@@ -259,6 +280,19 @@ def crear_reserva(request):
 
             # 6) Recalcular totales EN SERVIDOR.
             reserva.recalcular_totales(guardar=True)
+
+            # 7) Conductores adicionales con sus datos legales.
+            from .models import ConductorAdicional
+            for cond in datos.get("conductores_adicionales", []):
+                ConductorAdicional.objects.create(
+                    reserva=reserva,
+                    nombre=cond["nombre"],
+                    apellidos=cond.get("apellidos", ""),
+                    nif=cond["nif"],
+                    fecha_nacimiento=cond["fecha_nacimiento"],
+                    carnet_numero=cond["carnet_numero"],
+                    carnet_caducidad=cond["carnet_caducidad"],
+                )
 
     except Exception:
         return Response(

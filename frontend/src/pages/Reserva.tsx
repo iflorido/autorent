@@ -4,6 +4,7 @@ import PasosIndicador from "@/components/ui/PasosIndicador";
 import { getVehiculo, getPrecio, crearReserva } from "@/lib/api";
 import type {
   ClienteEntrada,
+  ConductorAdicionalEntrada,
   ExtraEntrada,
   PrecioCalculo,
   ReservaCreada,
@@ -37,6 +38,11 @@ const CLIENTE_INICIAL: ClienteEntrada = {
   carnet_numero: "", carnet_caducidad: "",
 };
 
+const CONDUCTOR_VACIO: ConductorAdicionalEntrada = {
+  nombre: "", apellidos: "", nif: "", fecha_nacimiento: "",
+  carnet_numero: "", carnet_caducidad: "",
+};
+
 export default function Reserva() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
@@ -53,6 +59,7 @@ export default function Reserva() {
   const [paso, setPaso] = useState(0);
 
   const [cliente, setCliente] = useState<ClienteEntrada>(CLIENTE_INICIAL);
+  const [conductores, setConductores] = useState<ConductorAdicionalEntrada[]>([]);
   const [metodoPago, setMetodoPago] = useState<"transferencia" | "tarjeta" | "efectivo">("transferencia");
   const [aceptaCondiciones, setAceptaCondiciones] = useState(false);
 
@@ -91,24 +98,58 @@ export default function Reserva() {
     setCliente((c) => ({ ...c, [campo]: valor }));
   }
 
+  // --- Conductores adicionales ---
+  function addConductor() {
+    setConductores((cs) => [...cs, { ...CONDUCTOR_VACIO }]);
+  }
+  function quitarConductor(idx: number) {
+    setConductores((cs) => cs.filter((_, i) => i !== idx));
+  }
+  function actualizarConductor(idx: number, campo: keyof ConductorAdicionalEntrada, valor: string) {
+    setConductores((cs) => cs.map((c, i) => (i === idx ? { ...c, [campo]: valor } : c)));
+  }
+
   function validarPaso1(): boolean {
     setError(null);
-    if (!cliente.nombre.trim() || !cliente.nif.trim() || !cliente.email.trim() || !cliente.telefono.trim()) {
-      setError("Completa al menos nombre, NIF, email y teléfono.");
-      return false;
+    // Todos los campos del cliente son obligatorios.
+    const obligatorios: [keyof ClienteEntrada, string][] = [
+      ["nombre", "nombre"], ["apellidos", "apellidos"], ["nif", "NIF"],
+      ["email", "email"], ["telefono", "teléfono"], ["fecha_nacimiento", "fecha de nacimiento"],
+      ["direccion", "dirección"], ["poblacion", "población"], ["cp", "código postal"],
+      ["provincia", "provincia"], ["carnet_numero", "nº de carnet"], ["carnet_caducidad", "caducidad del carnet"],
+    ];
+    for (const [campo, etiqueta] of obligatorios) {
+      if (!String(cliente[campo] ?? "").trim()) {
+        setError(`Falta completar: ${etiqueta}.`);
+        return false;
+      }
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cliente.email)) {
       setError("El email no parece válido.");
       return false;
     }
-    if (!cliente.carnet_numero?.trim() || !cliente.carnet_caducidad) {
-      setError("Indica el número y la caducidad de tu carnet de conducir.");
-      return false;
-    }
-    // El carnet no puede estar caducado al inicio del alquiler.
-    if (cliente.carnet_caducidad < fechaInicio) {
+    if ((cliente.carnet_caducidad ?? "") < fechaInicio) {
       setError("Tu carnet de conducir caduca antes del inicio del alquiler.");
       return false;
+    }
+    // Validar cada conductor adicional (todos sus campos).
+    for (let i = 0; i < conductores.length; i++) {
+      const c = conductores[i];
+      const campos: [keyof ConductorAdicionalEntrada, string][] = [
+        ["nombre", "nombre"], ["apellidos", "apellidos"], ["nif", "NIF"],
+        ["fecha_nacimiento", "fecha de nacimiento"], ["carnet_numero", "nº de carnet"],
+        ["carnet_caducidad", "caducidad del carnet"],
+      ];
+      for (const [campo, etiqueta] of campos) {
+        if (!String(c[campo] ?? "").trim()) {
+          setError(`Conductor adicional ${i + 1}: falta ${etiqueta}.`);
+          return false;
+        }
+      }
+      if (c.carnet_caducidad < fechaInicio) {
+        setError(`Conductor adicional ${i + 1}: el carnet caduca antes del alquiler.`);
+        return false;
+      }
     }
     return true;
   }
@@ -138,6 +179,7 @@ export default function Reserva() {
         metodo_pago: metodoPago,
         cliente: clienteLimpio,
         extras,
+        conductores_adicionales: conductores,
         acepta_condiciones: aceptaCondiciones,
       });
       setReserva(creada);
@@ -190,17 +232,69 @@ export default function Reserva() {
                 <h2 className="text-lg font-medium mb-5">Tus datos</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Campo label="Nombre *" value={cliente.nombre} onChange={(v) => actualizar("nombre", v)} />
-                  <Campo label="Apellidos" value={cliente.apellidos || ""} onChange={(v) => actualizar("apellidos", v)} />
+                  <Campo label="Apellidos *" value={cliente.apellidos || ""} onChange={(v) => actualizar("apellidos", v)} />
                   <Campo label="NIF / DNI / Pasaporte *" value={cliente.nif} onChange={(v) => actualizar("nif", v)} />
                   <Campo label="Teléfono *" value={cliente.telefono} onChange={(v) => actualizar("telefono", v)} />
                   <Campo label="Email *" value={cliente.email} onChange={(v) => actualizar("email", v)} className="sm:col-span-2" />
-                  <Campo label="Fecha de nacimiento" type="date" value={cliente.fecha_nacimiento || ""} onChange={(v) => actualizar("fecha_nacimiento", v)} />
+                  <Campo label="Fecha de nacimiento *" type="date" value={cliente.fecha_nacimiento || ""} onChange={(v) => actualizar("fecha_nacimiento", v)} />
+                  <div className="hidden sm:block" />
                   <Campo label="Nº carnet de conducir *" value={cliente.carnet_numero || ""} onChange={(v) => actualizar("carnet_numero", v)} />
                   <Campo label="Caducidad del carnet *" type="date" value={cliente.carnet_caducidad || ""} onChange={(v) => actualizar("carnet_caducidad", v)} />
-                  <Campo label="Dirección" value={cliente.direccion || ""} onChange={(v) => actualizar("direccion", v)} className="sm:col-span-2" />
-                  <Campo label="Población" value={cliente.poblacion || ""} onChange={(v) => actualizar("poblacion", v)} />
-                  <Campo label="Código postal" value={cliente.cp || ""} onChange={(v) => actualizar("cp", v)} />
+                  <Campo label="Dirección *" value={cliente.direccion || ""} onChange={(v) => actualizar("direccion", v)} className="sm:col-span-2" />
+                  <Campo label="Población *" value={cliente.poblacion || ""} onChange={(v) => actualizar("poblacion", v)} />
+                  <Campo label="Código postal *" value={cliente.cp || ""} onChange={(v) => actualizar("cp", v)} />
+                  <Campo label="Provincia *" value={cliente.provincia || ""} onChange={(v) => actualizar("provincia", v)} />
                 </div>
+
+                {/* Conductores adicionales */}
+                <div className="mt-8 pt-6 border-t border-border">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-medium">Conductores adicionales</h3>
+                    <button
+                      type="button"
+                      onClick={addConductor}
+                      className="text-[13px] text-accent font-medium hover:underline flex items-center gap-1"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+                      Añadir conductor
+                    </button>
+                  </div>
+                  <p className="text-[13px] text-text-2 mb-4">
+                    Solo quienes vayan a conducir deben registrarse. Deben cumplir los mismos
+                    requisitos legales (edad y antigüedad de carnet). Ceder el volante a un
+                    conductor no registrado anula el seguro.
+                  </p>
+
+                  {conductores.length === 0 && (
+                    <p className="text-[13px] text-text-2 italic">No has añadido conductores adicionales.</p>
+                  )}
+
+                  <div className="space-y-5">
+                    {conductores.map((c, idx) => (
+                      <div key={idx} className="bg-bg border border-border rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-medium">Conductor adicional {idx + 1}</p>
+                          <button
+                            type="button"
+                            onClick={() => quitarConductor(idx)}
+                            className="text-[13px] text-red-600 hover:underline"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <Campo label="Nombre *" value={c.nombre} onChange={(v) => actualizarConductor(idx, "nombre", v)} />
+                          <Campo label="Apellidos *" value={c.apellidos} onChange={(v) => actualizarConductor(idx, "apellidos", v)} />
+                          <Campo label="NIF / DNI *" value={c.nif} onChange={(v) => actualizarConductor(idx, "nif", v)} />
+                          <Campo label="Fecha de nacimiento *" type="date" value={c.fecha_nacimiento} onChange={(v) => actualizarConductor(idx, "fecha_nacimiento", v)} />
+                          <Campo label="Nº carnet *" value={c.carnet_numero} onChange={(v) => actualizarConductor(idx, "carnet_numero", v)} />
+                          <Campo label="Caducidad del carnet *" type="date" value={c.carnet_caducidad} onChange={(v) => actualizarConductor(idx, "carnet_caducidad", v)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {error && <p className="text-red-600 text-[13px] mt-4">{error}</p>}
                 <div className="flex justify-end mt-6">
                   <button

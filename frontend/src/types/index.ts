@@ -110,6 +110,15 @@ export interface ExtraEntrada {
   cantidad: number;
 }
 
+export interface ConductorAdicionalEntrada {
+  nombre: string;
+  apellidos: string;
+  nif: string;
+  fecha_nacimiento: string;
+  carnet_numero: string;
+  carnet_caducidad: string;
+}
+
 export interface CrearReservaPayload {
   vehiculo_id: number;
   fecha_inicio: string;
@@ -119,6 +128,7 @@ export interface CrearReservaPayload {
   metodo_pago: "transferencia" | "tarjeta" | "efectivo";
   cliente: ClienteEntrada;
   extras: ExtraEntrada[];
+  conductores_adicionales: ConductorAdicionalEntrada[];
   acepta_condiciones: boolean;
 }
 

@@ -222,6 +222,38 @@ class ReservaExtra(models.Model):
         return self.precio_congelado * self.cantidad
 
 
+class ConductorAdicional(models.Model):
+    """Conductor adicional autorizado en una reserva.
+
+    Debe cumplir los mismos requisitos legales que el conductor principal
+    (edad mínima y antigüedad de carnet según la categoría del vehículo),
+    según las Condiciones Generales de Contratación. Ceder el volante a un
+    conductor no registrado aquí anula las coberturas del seguro.
+    """
+    reserva = models.ForeignKey(
+        Reserva, on_delete=models.CASCADE, related_name="conductores_adicionales",
+        verbose_name="Reserva",
+    )
+    nombre = models.CharField(max_length=120, verbose_name="Nombre")
+    apellidos = models.CharField(max_length=160, blank=True, verbose_name="Apellidos")
+    nif = models.CharField(max_length=20, verbose_name="NIF/DNI/Pasaporte")
+    fecha_nacimiento = models.DateField(verbose_name="Fecha de nacimiento")
+    carnet_numero = models.CharField(max_length=40, verbose_name="Nº carnet de conducir")
+    carnet_caducidad = models.DateField(verbose_name="Caducidad del carnet")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Conductor adicional"
+        verbose_name_plural = "Conductores adicionales"
+
+    def __str__(self):
+        return f"{self.nombre} {self.apellidos}".strip() + f" ({self.reserva.localizador})"
+
+    @property
+    def nombre_completo(self):
+        return f"{self.nombre} {self.apellidos}".strip()
+
+
 class DocumentoReserva(models.Model):
     class Tipo(models.TextChoices):
         DNI_ANVERSO = "dni_anverso", "DNI (anverso)"

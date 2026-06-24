@@ -16,6 +16,7 @@ from .vehiculo import (
 from .reserva import (
     Cancelacion,
     Cliente,
+    ConductorAdicional,
     DocumentoReserva,
     Factura,
     Pago,
@@ -36,6 +37,7 @@ __all__ = [
     "Cliente",
     "Reserva",
     "ReservaExtra",
+    "ConductorAdicional",
     "DocumentoReserva",
     "Pago",
     "Factura",
