@@ -17,6 +17,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from .vehiculo import Extra, Vehiculo
+from ..storage import documentos_storage
 
 
 class Cliente(models.Model):
@@ -62,11 +63,12 @@ class Cliente(models.Model):
 
 
 def documento_upload_path(instance, filename):
-    """Documentos en subcarpeta separada (se protegerá con el frontend).
+    """Ruta dentro de DOCUMENTS_ROOT (carpeta separada, no pública).
 
-    NO debe servirse con el alias público de Nginx de /media/vehiculos/.
+    Se organiza por RESERVA (no por DNI: el DNI es un dato personal y no debe
+    aparecer en rutas, logs ni backups). El acceso es solo vía Django (staff).
     """
-    return f"documentos/reserva_{instance.reserva_id}/{filename}"
+    return f"reserva_{instance.reserva_id}/{filename}"
 
 
 class Reserva(models.Model):
@@ -270,7 +272,10 @@ class DocumentoReserva(models.Model):
         Reserva, on_delete=models.CASCADE, related_name="documentos", verbose_name="Reserva",
     )
     tipo = models.CharField(max_length=20, choices=Tipo.choices, verbose_name="Tipo")
-    archivo = models.FileField(upload_to=documento_upload_path, verbose_name="Archivo")
+    archivo = models.FileField(
+        upload_to=documento_upload_path, storage=documentos_storage,
+        verbose_name="Archivo",
+    )
     estado = models.CharField(
         max_length=12, choices=Estado.choices,
         default=Estado.PENDIENTE, verbose_name="Estado",

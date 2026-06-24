@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import PasosIndicador from "@/components/ui/PasosIndicador";
+import SubidaDocumentos from "@/components/ui/SubidaDocumentos";
 import { getVehiculo, getPrecio, crearReserva } from "@/lib/api";
 import type {
   ClienteEntrada,
@@ -396,7 +397,19 @@ export default function Reserva() {
                   </p>
                 )}
 
-                <Link to="/" className="inline-block mt-6 bg-accent text-white font-medium px-6 py-3 rounded-lg hover:opacity-90 transition">
+                {/* Subida de documentos (opcional ahora, agiliza la recogida) */}
+                <div className="mt-8 pt-6 border-t border-border text-left max-w-md mx-auto">
+                  <h3 className="font-medium text-center">Agiliza tu recogida</h3>
+                  <p className="text-[13px] text-text-2 text-center mt-1 mb-4">
+                    Puedes adjuntar ahora tu documentación. Si lo prefieres, podrás hacerlo más adelante.
+                  </p>
+                  <SubidaDocumentos localizador={reserva.localizador} />
+                  <p className="text-[12px] text-text-2 mt-3 text-center">
+                    Tus documentos se almacenan de forma segura y solo son accesibles por nuestro personal.
+                  </p>
+                </div>
+
+                <Link to="/" className="inline-block mt-8 bg-accent text-white font-medium px-6 py-3 rounded-lg hover:opacity-90 transition">
                   Volver al inicio
                 </Link>
               </div>

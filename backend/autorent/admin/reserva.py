@@ -48,8 +48,18 @@ class ConductorAdicionalInline(admin.TabularInline):
 class DocumentoReservaInline(admin.TabularInline):
     model = DocumentoReserva
     extra = 0
-    fields = ("tipo", "archivo", "estado", "notas_revision", "subido_at")
-    readonly_fields = ("subido_at",)
+    fields = ("tipo", "archivo", "ver_seguro", "estado", "notas_revision", "subido_at")
+    readonly_fields = ("subido_at", "ver_seguro")
+
+    def ver_seguro(self, obj):
+        """Enlace a la vista protegida (no a la URL pública de media)."""
+        from django.urls import reverse
+        from django.utils.html import format_html
+        if not obj.pk or not obj.archivo:
+            return "—"
+        url = reverse("autorent:servir-documento", args=[obj.pk])
+        return format_html('<a href="{}" target="_blank">Ver documento 🔒</a>', url)
+    ver_seguro.short_description = "Ver (seguro)"
 
 
 class PagoInline(admin.TabularInline):

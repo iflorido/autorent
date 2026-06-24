@@ -186,6 +186,11 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Documentos sensibles (DNI, carnet): se guardan FUERA de MEDIA_ROOT, en una
+# carpeta que Nginx NO sirve. Solo se acceden vía Django (vista con staff).
+# En el contenedor se monta el volumen /app/documents -> data/documents del host.
+DOCUMENTS_ROOT = os.getenv("DOCUMENTS_ROOT", str(BASE_DIR / "documents"))
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 

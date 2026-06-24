@@ -301,5 +301,114 @@ def crear_reserva(request):
         )
 
     # 7) Respuesta con el localizador y el desglose.
+    # Enviar correos (al cliente y a la empresa). Fuera de la transacción:
+    # si el envío falla, la reserva ya está creada y no se revierte.
+    from .notificaciones import enviar_correos_reserva
+    enviar_correos_reserva(reserva)
+
     salida = ReservaCreadaSerializer(reserva)
     return Response(salida.data, status=status.HTTP_201_CREATED)
+
+
+# ─────────────────────────────────────────────────────────────
+# Subida de documentos de una reserva (DNI, carnet) — datos sensibles
+# ─────────────────────────────────────────────────────────────
+
+# Tipos MIME y extensiones permitidos para documentos.
+DOC_EXTENSIONES = {".jpg", ".jpeg", ".png", ".pdf", ".webp", ".heic"}
+DOC_MIME = {
+    "image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf",
+}
+DOC_MAX_BYTES = 10 * 1024 * 1024  # 10 MB por archivo
+DOC_TIPOS_VALIDOS = {"dni_anverso", "dni_reverso", "carnet", "otro"}
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def subir_documento(request, localizador):
+    """Sube un documento (DNI/carnet) asociado a una reserva.
+
+    POST /api/reservas/<localizador>/documentos/
+    Campos (multipart/form-data): tipo, archivo.
+
+    Seguridad:
+      - Valida que la reserva existe (por localizador).
+      - Valida tipo de documento, extensión, MIME y tamaño.
+      - Guarda en carpeta protegida (no servida públicamente por Nginx).
+    """
+    import os
+    from .models import Reserva, DocumentoReserva
+
+    try:
+        reserva = Reserva.objects.get(localizador=localizador)
+    except Reserva.DoesNotExist:
+        return Response({"detail": "Reserva no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    tipo = request.data.get("tipo", "otro")
+    if tipo not in DOC_TIPOS_VALIDOS:
+        return Response({"detail": "Tipo de documento no válido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    archivo = request.FILES.get("archivo")
+    if not archivo:
+        return Response({"detail": "No se ha enviado ningún archivo."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validación de tamaño.
+    if archivo.size > DOC_MAX_BYTES:
+        return Response(
+            {"detail": "El archivo supera el tamaño máximo de 10 MB."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validación de extensión.
+    ext = os.path.splitext(archivo.name)[1].lower()
+    if ext not in DOC_EXTENSIONES:
+        return Response(
+            {"detail": "Formato no permitido. Usa JPG, PNG, WEBP o PDF."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Validación de tipo MIME declarado.
+    content_type = getattr(archivo, "content_type", "") or ""
+    if content_type and content_type not in DOC_MIME:
+        return Response(
+            {"detail": "Tipo de archivo no permitido."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    doc = DocumentoReserva.objects.create(
+        reserva=reserva, tipo=tipo, archivo=archivo,
+        estado=DocumentoReserva.Estado.PENDIENTE,
+    )
+
+    return Response(
+        {"id": doc.id, "tipo": doc.tipo, "estado": doc.estado, "subido": True},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])  # control de acceso real: ver dentro
+def servir_documento(request, doc_id):
+    """Sirve un documento protegido SOLO a personal autenticado (staff).
+
+    GET /api/documentos/<doc_id>/
+
+    Los documentos (DNI, carnet) NO se sirven por Nginx público: se acceden
+    únicamente a través de esta vista, que exige usuario staff autenticado.
+    """
+    from django.http import FileResponse, Http404
+    from .models import DocumentoReserva
+
+    # Solo personal autenticado del panel puede ver documentos sensibles.
+    if not (request.user and request.user.is_authenticated and request.user.is_staff):
+        return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        doc = DocumentoReserva.objects.get(pk=doc_id)
+    except DocumentoReserva.DoesNotExist:
+        raise Http404
+
+    if not doc.archivo:
+        raise Http404
+
+    return FileResponse(doc.archivo.open("rb"), as_attachment=False)

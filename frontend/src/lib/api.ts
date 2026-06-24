@@ -68,3 +68,17 @@ export async function crearReserva(payload: CrearReservaPayload): Promise<Reserv
   const { data } = await api.post<ReservaCreada>("/reservas/", payload);
   return data;
 }
+
+export async function subirDocumento(
+  localizador: string,
+  tipo: string,
+  archivo: File,
+): Promise<{ id: number; tipo: string; estado: string }> {
+  const fd = new FormData();
+  fd.append("tipo", tipo);
+  fd.append("archivo", archivo);
+  const { data } = await api.post(`/reservas/${localizador}/documentos/`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
