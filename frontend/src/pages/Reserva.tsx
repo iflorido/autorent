@@ -13,6 +13,24 @@ import { formatoCorto } from "@/lib/fechas";
 
 const PASOS = ["Tus datos", "Pago", "Confirmación"];
 
+/** Extrae el primer mensaje de error legible de la respuesta del backend. */
+function extraerError(data: unknown): string | null {
+  if (!data) return null;
+  if (typeof data === "string") return data;
+  if (Array.isArray(data)) return data.length ? extraerError(data[0]) : null;
+  if (typeof data === "object") {
+    // Caso { detail: "..." }
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.detail === "string") return obj.detail;
+    // Recorrer campos (incluido anidado como { cliente: { campo: [...] } }).
+    for (const valor of Object.values(obj)) {
+      const msg = extraerError(valor);
+      if (msg) return msg;
+    }
+  }
+  return null;
+}
+
 const CLIENTE_INICIAL: ClienteEntrada = {
   nombre: "", apellidos: "", nif: "", email: "", telefono: "",
   fecha_nacimiento: "", direccion: "", poblacion: "", cp: "", provincia: "",
@@ -95,6 +113,13 @@ export default function Reserva() {
     if (!vehiculo) return;
 
     const extras: ExtraEntrada[] = extrasIds.map((id) => ({ extra_id: id, cantidad: 1 }));
+
+    // Limpieza: no enviar cadenas vacías en los campos de fecha (el backend
+    // espera fecha válida o ausencia del campo).
+    const clienteLimpio: ClienteEntrada = { ...cliente };
+    if (!clienteLimpio.fecha_nacimiento) delete clienteLimpio.fecha_nacimiento;
+    if (!clienteLimpio.carnet_caducidad) delete clienteLimpio.carnet_caducidad;
+
     setEnviando(true);
     try {
       const creada = await crearReserva({
@@ -102,18 +127,19 @@ export default function Reserva() {
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         metodo_pago: metodoPago,
-        cliente,
+        cliente: clienteLimpio,
         extras,
         acepta_condiciones: aceptaCondiciones,
       });
       setReserva(creada);
       setPaso(2);
     } catch (e: unknown) {
-      const err = e as { response?: { data?: Record<string, unknown>; status?: number } };
+      const err = e as { response?: { data?: unknown; status?: number } };
       if (err.response?.status === 409) {
         setError("El vehículo ya no está disponible en esas fechas.");
       } else {
-        setError("No se pudo completar la reserva. Revisa los datos e inténtalo de nuevo.");
+        // Extraer el primer mensaje de error legible que devuelva el backend.
+        setError(extraerError(err.response?.data) ?? "No se pudo completar la reserva. Inténtalo de nuevo.");
       }
     } finally {
       setEnviando(false);

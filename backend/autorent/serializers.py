@@ -118,6 +118,14 @@ class VehiculoDetailSerializer(serializers.ModelSerializer):
 # Serializers de ESCRITURA (creación de reserva desde el asistente)
 # ─────────────────────────────────────────────────────────────
 
+class FechaOpcionalField(serializers.DateField):
+    """DateField que trata la cadena vacía como null (el front envía '')."""
+    def to_internal_value(self, value):
+        if value in ("", None):
+            return None
+        return super().to_internal_value(value)
+
+
 class ClienteEntradaSerializer(serializers.Serializer):
     """Datos del cliente que llegan del asistente de reserva."""
     nombre = serializers.CharField(max_length=120)
@@ -125,14 +133,14 @@ class ClienteEntradaSerializer(serializers.Serializer):
     nif = serializers.CharField(max_length=20)
     email = serializers.EmailField()
     telefono = serializers.CharField(max_length=20)
-    fecha_nacimiento = serializers.DateField(required=False, allow_null=True)
+    fecha_nacimiento = FechaOpcionalField(required=False, allow_null=True)
     direccion = serializers.CharField(max_length=255, required=False, allow_blank=True)
     poblacion = serializers.CharField(max_length=100, required=False, allow_blank=True)
     cp = serializers.CharField(max_length=10, required=False, allow_blank=True)
     provincia = serializers.CharField(max_length=100, required=False, allow_blank=True)
     pais = serializers.CharField(max_length=60, required=False, allow_blank=True)
     carnet_numero = serializers.CharField(max_length=40, required=False, allow_blank=True)
-    carnet_caducidad = serializers.DateField(required=False, allow_null=True)
+    carnet_caducidad = FechaOpcionalField(required=False, allow_null=True)
 
 
 class ExtraEntradaSerializer(serializers.Serializer):
