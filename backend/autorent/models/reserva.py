@@ -71,6 +71,11 @@ def documento_upload_path(instance, filename):
     return f"reserva_{instance.reserva_id}/{filename}"
 
 
+def contrato_upload_path(instance, filename):
+    """Ruta del contrato PDF, en la misma carpeta protegida de la reserva."""
+    return f"reserva_{instance.reserva_id}/contrato/{filename}"
+
+
 class Reserva(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "pendiente", "Pendiente"
@@ -459,3 +464,33 @@ class TokenSubida(models.Model):
         from django.utils import timezone
         self.usado_at = timezone.now()
         self.save(update_fields=["usado_at"])
+
+
+class ContratoReserva(models.Model):
+    """Contrato PDF generado para una reserva.
+
+    Se genera (tarea Celery) al confirmar la reserva y puede regenerarse. El
+    PDF se guarda en la carpeta protegida (no pública). El envío al cliente es
+    una acción aparte (el admin revisa antes de enviar).
+    """
+    reserva = models.OneToOneField(
+        Reserva, on_delete=models.CASCADE, related_name="contrato",
+        verbose_name="Reserva",
+    )
+    archivo = models.FileField(
+        upload_to=contrato_upload_path, storage=documentos_storage,
+        blank=True, null=True, verbose_name="Contrato PDF",
+    )
+    hash_sha256 = models.CharField(
+        max_length=64, blank=True, editable=False, verbose_name="Hash SHA-256",
+        help_text="Huella del PDF generado, para integridad/auditoría.",
+    )
+    generado_at = models.DateTimeField(blank=True, null=True, verbose_name="Generado")
+    enviado_at = models.DateTimeField(blank=True, null=True, verbose_name="Enviado al cliente")
+
+    class Meta:
+        verbose_name = "Contrato"
+        verbose_name_plural = "Contratos"
+
+    def __str__(self):
+        return f"Contrato {self.reserva.localizador}"

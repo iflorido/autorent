@@ -504,3 +504,59 @@ def _motivos_rechazo(reserva):
         etiqueta = f"{d.get_tipo_display()} ({quien})"
         motivos.append(f"{etiqueta}: {nota}" if nota else etiqueta)
     return "; ".join(motivos)
+
+
+def enviar_contrato_cliente(reserva):
+    """Envía el contrato PDF al cliente como adjunto."""
+    from core.models import EmailConfig
+    contrato = getattr(reserva, "contrato", None)
+    if not contrato or not contrato.archivo:
+        logger.warning("No hay contrato que enviar para %s", reserva.localizador)
+        return False
+
+    site = _site_config()
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    nombre_empresa = site.nombre or "AutoRent"
+
+    asunto = f"Tu contrato de alquiler — reserva {reserva.localizador}"
+    texto = (
+        f"Hola {reserva.cliente.nombre},\n\n"
+        f"Adjuntamos el contrato de alquiler de tu reserva {reserva.localizador}.\n\n"
+        f"Revísalo y consérvalo. Deberás presentar tu documentación original y una "
+        f"tarjeta de crédito válida para la fianza al recoger el vehículo.\n\n"
+        f"Vehículo: {reserva.vehiculo.nombre}\n"
+        f"Recogida: {reserva.fecha_inicio}\n"
+        f"Devolución: {reserva.fecha_fin}\n\n"
+        f"Gracias por confiar en {nombre_empresa}."
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#0891b2">Tu contrato de alquiler</h2>
+      <p>Hola {escape(reserva.cliente.nombre)},</p>
+      <p>Adjuntamos el contrato de alquiler de tu reserva
+         <strong>{reserva.localizador}</strong>. Revísalo y consérvalo.</p>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
+        <p style="margin:0;font-size:14px">Recuerda presentar tu documentación original y una
+           <strong>tarjeta de crédito</strong> válida para la fianza al recoger el vehículo.</p>
+      </div>
+      <p style="color:#4b5c78;font-size:14px">Gracias por confiar en {escape(nombre_empresa)}.</p>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(asunto, texto, from_email=remitente,
+                                     to=[reserva.cliente.email], connection=connection)
+        msg.attach_alternative(html, "text/html")
+        # Adjuntar el PDF.
+        contrato.archivo.open("rb")
+        msg.attach(f"contrato_{reserva.localizador}.pdf",
+                   contrato.archivo.read(), "application/pdf")
+        contrato.archivo.close()
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo enviando contrato de %s: %s", reserva.localizador, exc)
+        return False

@@ -10,6 +10,7 @@ from ..models import (
     Cancelacion,
     Cliente,
     ConductorAdicional,
+    ContratoReserva,
     DocumentoReserva,
     Factura,
     Pago,
@@ -74,6 +75,26 @@ class PagoInline(admin.TabularInline):
     readonly_fields = ("fecha",)
 
 
+class ContratoReservaInline(admin.StackedInline):
+    model = ContratoReserva
+    extra = 0
+    can_delete = False
+    fields = ("descargar", "generado_at", "enviado_at", "hash_sha256")
+    readonly_fields = ("descargar", "generado_at", "enviado_at", "hash_sha256")
+
+    def has_add_permission(self, request, obj=None):
+        return False  # se crea automáticamente al confirmar
+
+    def descargar(self, obj):
+        from django.urls import reverse
+        from django.utils.html import format_html
+        if not obj.pk or not obj.archivo:
+            return "Aún no generado"
+        url = reverse("autorent:servir-contrato", args=[obj.reserva_id])
+        return format_html('<a href="{}" target="_blank">Descargar contrato 🔒</a>', url)
+    descargar.short_description = "Contrato"
+
+
 @admin.register(Reserva)
 class ReservaAdmin(admin.ModelAdmin):
     list_display = (
@@ -90,7 +111,7 @@ class ReservaAdmin(admin.ModelAdmin):
         "localizador", "num_dias", "precio_dia_base", "subtotal_vehiculo",
         "subtotal_extras", "total", "created_at", "updated_at",
     )
-    inlines = [ReservaExtraInline, ConductorAdicionalInline, DocumentoReservaInline, PagoInline]
+    inlines = [ReservaExtraInline, ConductorAdicionalInline, DocumentoReservaInline, PagoInline, ContratoReservaInline]
     fieldsets = (
         ("Reserva", {
             "fields": ("localizador", "cliente", "vehiculo",
@@ -107,9 +128,25 @@ class ReservaAdmin(admin.ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        # Guardar primero para tener pk, luego recalcular con extras incluidos.
+        # Detectar si la reserva pasa a "confirmada" en este guardado.
+        paso_a_confirmada = False
+        if change and "estado" in form.changed_data:
+            from ..models import Reserva
+            if obj.estado == Reserva.Estado.CONFIRMADA:
+                paso_a_confirmada = True
+
         super().save_model(request, obj, form, change)
         obj.recalcular_totales()
+
+        # Al confirmar, generar el contrato en segundo plano (Celery).
+        if paso_a_confirmada:
+            from ..tasks import generar_contrato_reserva
+            generar_contrato_reserva.delay(obj.pk)
+            self.message_user(
+                request,
+                "Reserva confirmada. El contrato se está generando; "
+                "actualiza en unos segundos para verlo en la sección Contrato.",
+            )
 
     def save_related(self, request, form, formsets, change):
         # Tras guardar los inlines (extras y documentos), recalcular el total.
@@ -159,6 +196,39 @@ class ReservaAdmin(admin.ModelAdmin):
         # Registrar el estado notificado para no repetir el correo.
         reserva.doc_estado_notificado = estado
         reserva.save(update_fields=["doc_estado_notificado"])
+
+    actions = ["regenerar_contrato", "enviar_contrato"]
+
+    @admin.action(description="Regenerar contrato PDF")
+    def regenerar_contrato(self, request, queryset):
+        from ..tasks import generar_contrato_reserva
+        for reserva in queryset:
+            generar_contrato_reserva.delay(reserva.pk)
+        self.message_user(
+            request,
+            f"Generando contrato de {queryset.count()} reserva(s). "
+            "Actualiza en unos segundos.",
+        )
+
+    @admin.action(description="Enviar contrato al cliente por correo")
+    def enviar_contrato(self, request, queryset):
+        from django.utils import timezone
+        from ..notificaciones import enviar_contrato_cliente
+        enviados = 0
+        sin_contrato = 0
+        for reserva in queryset:
+            contrato = getattr(reserva, "contrato", None)
+            if not contrato or not contrato.archivo:
+                sin_contrato += 1
+                continue
+            if enviar_contrato_cliente(reserva):
+                contrato.enviado_at = timezone.now()
+                contrato.save(update_fields=["enviado_at"])
+                enviados += 1
+        msg = f"Contrato enviado a {enviados} cliente(s)."
+        if sin_contrato:
+            msg += f" {sin_contrato} sin contrato generado (genéralo primero)."
+        self.message_user(request, msg)
 
 
 @admin.register(Pago)

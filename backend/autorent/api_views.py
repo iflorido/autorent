@@ -568,3 +568,27 @@ def finalizar_subida(request, token):
     enviar_correo_documentos_recibidos_cliente(reserva)
 
     return Response({"finalizado": True})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])  # control real dentro: solo staff
+def servir_contrato(request, reserva_id):
+    """Sirve el PDF del contrato SOLO a personal autenticado (staff).
+
+    GET /api/contratos/<reserva_id>/
+    """
+    from django.http import FileResponse, Http404
+    from .models import ContratoReserva
+
+    if not (request.user and request.user.is_authenticated and request.user.is_staff):
+        return Response({"detail": "No autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        contrato = ContratoReserva.objects.get(reserva_id=reserva_id)
+    except ContratoReserva.DoesNotExist:
+        raise Http404
+    if not contrato.archivo:
+        raise Http404
+
+    return FileResponse(contrato.archivo.open("rb"), as_attachment=False,
+                        filename=f"contrato_{contrato.reserva.localizador}.pdf")
