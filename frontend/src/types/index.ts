@@ -146,4 +146,5 @@ export interface ReservaCreada {
   fianza: string;
   total: string;
   metodo_pago: string;
+  token_subida?: string;
 }

@@ -280,6 +280,9 @@ export default function Vehiculo() {
                       <span>Fianza (depósito)</span>
                       <span>{precio.fianza} €</span>
                     </div>
+                    <p className="text-[11px] text-text-2 leading-snug">
+                      La fianza se retiene en la recogida con tarjeta de crédito a nombre del titular.
+                    </p>
 
                     <div className="flex justify-between font-medium text-base border-t border-border pt-2 mt-2">
                       <span>Total alquiler</span>

@@ -311,7 +311,11 @@ def crear_reserva(request):
     enviar_correos_reserva(reserva, token_subida=token_subida)
 
     salida = ReservaCreadaSerializer(reserva)
-    return Response(salida.data, status=status.HTTP_201_CREATED)
+    datos = dict(salida.data)
+    # Incluir el token de subida para que el asistente enlace al formulario
+    # de documentos (mismo flujo que el enlace del correo).
+    datos["token_subida"] = token_subida.token
+    return Response(datos, status=status.HTTP_201_CREATED)
 
 
 # ─────────────────────────────────────────────────────────────

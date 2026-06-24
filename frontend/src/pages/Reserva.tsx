@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import PasosIndicador from "@/components/ui/PasosIndicador";
-import SubidaDocumentos from "@/components/ui/SubidaDocumentos";
 import { getVehiculo, getPrecio, crearReserva } from "@/lib/api";
 import type {
   ClienteEntrada,
@@ -335,6 +334,18 @@ export default function Reserva() {
                   ))}
                 </div>
 
+                {/* Aviso de fianza con tarjeta de crédito */}
+                <div className="mt-5 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-amber-600 shrink-0 mt-0.5">
+                    <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
+                  </svg>
+                  <p className="text-[13px] text-amber-900">
+                    <strong>Fianza:</strong> además del importe del alquiler, en la recogida se
+                    retiene el depósito de garantía con <strong>tarjeta de crédito</strong> válida
+                    a nombre del conductor titular. No se admite tarjeta de débito ni efectivo para la fianza.
+                  </p>
+                </div>
+
                 {/* Checkbox obligatorio de condiciones (NO premarcado) */}
                 <label className="flex items-start gap-3 mt-6 cursor-pointer">
                   <input
@@ -397,19 +408,30 @@ export default function Reserva() {
                   </p>
                 )}
 
-                {/* Subida de documentos (opcional ahora, agiliza la recogida) */}
+                {/* Subida de documentos: lleva al mismo formulario que el enlace
+                    del correo (muestra el aviso de envío y admite conductores). */}
                 <div className="mt-8 pt-6 border-t border-border text-left max-w-md mx-auto">
                   <h3 className="font-medium text-center">Agiliza tu recogida</h3>
                   <p className="text-[13px] text-text-2 text-center mt-1 mb-4">
-                    Puedes adjuntar ahora tu documentación. Si lo prefieres, podrás hacerlo más adelante.
+                    Sube ahora tu documentación (DNI y carnet){reserva.token_subida ? "" : ""}.
+                    También te hemos enviado un enlace por correo para hacerlo cuando quieras.
                   </p>
-                  <SubidaDocumentos localizador={reserva.localizador} />
+                  {reserva.token_subida && (
+                    <div className="text-center">
+                      <Link
+                        to={`/subir-documentos/${reserva.token_subida}`}
+                        className="inline-block bg-accent text-white font-medium px-6 py-3 rounded-lg hover:opacity-90 transition"
+                      >
+                        Subir documentación ahora
+                      </Link>
+                    </div>
+                  )}
                   <p className="text-[12px] text-text-2 mt-3 text-center">
                     Tus documentos se almacenan de forma segura y solo son accesibles por nuestro personal.
                   </p>
                 </div>
 
-                <Link to="/" className="inline-block mt-8 bg-accent text-white font-medium px-6 py-3 rounded-lg hover:opacity-90 transition">
+                <Link to="/" className="inline-block mt-8 text-accent font-medium hover:underline">
                   Volver al inicio
                 </Link>
               </div>

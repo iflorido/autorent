@@ -147,6 +147,9 @@ def _email_cliente(reserva, site, token_subida=None):
         f"{extras_txt}\n"
         f"Total alquiler: {_fmt(reserva.total)} €\n"
         f"Fianza (depósito): {_fmt(reserva.fianza)} €\n"
+        "\nIMPORTANTE — FIANZA: el depósito de garantía se retiene en el momento de la "
+        "recogida mediante TARJETA DE CRÉDITO válida a nombre del conductor titular. "
+        "No se admite débito ni efectivo para la fianza. Asegúrate de llevarla.\n"
         f"{datos_banco}"
         f"{bloque_docs}\n\n"
         f"Gracias por confiar en {nombre_empresa}."
@@ -169,6 +172,11 @@ def _email_cliente(reserva, site, token_subida=None):
             <td style="text-align:right">{_fmt(reserva.fianza)} €</td></tr>
       </table>
       {_html_banco(reserva, site)}
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
+        <p style="margin:0;font-size:14px"><strong>Fianza:</strong> el depósito de garantía
+           ({_fmt(reserva.fianza)} €) se retiene en la recogida con <strong>tarjeta de crédito</strong>
+           válida a nombre del conductor titular. No se admite débito ni efectivo para la fianza.</p>
+      </div>
       {_html_subida(enlace, reserva)}
       <p style="color:#4b5c78;font-size:14px">Gracias por confiar en {escape(nombre_empresa)}.</p>
     </div>

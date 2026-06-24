@@ -49,8 +49,12 @@ class ConductorAdicionalInline(admin.TabularInline):
 class DocumentoReservaInline(admin.TabularInline):
     model = DocumentoReserva
     extra = 0
-    fields = ("tipo", "conductor", "archivo", "ver_seguro", "estado", "notas_revision", "subido_at")
+    fields = ("tipo", "conductor", "ver_seguro", "estado", "notas_revision", "subido_at")
     readonly_fields = ("subido_at", "ver_seguro")
+
+    def has_add_permission(self, request, obj=None):
+        # Los documentos los sube el cliente (enlace/asistente), no el admin.
+        return False
 
     def ver_seguro(self, obj):
         """Enlace a la vista protegida (no a la URL pública de media)."""
