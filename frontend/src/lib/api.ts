@@ -82,3 +82,37 @@ export async function subirDocumento(
   });
   return data;
 }
+
+// --- Enlace mágico de subida de documentos (sin login) ---
+
+export interface InfoSubida {
+  localizador: string;
+  titular: string;
+  vehiculo: string;
+  conductores_adicionales: { id: number; nombre_completo: string }[];
+  documentos_subidos: { tipo: string; conductor_id: number | null }[];
+  expira_at: string;
+}
+
+export async function getInfoSubida(token: string): Promise<InfoSubida> {
+  const { data } = await api.get<InfoSubida>(`/subida/${token}/`);
+  return data;
+}
+
+export async function subirDocumentoToken(
+  token: string, tipo: string, archivo: File, conductorId?: number | null,
+): Promise<{ id: number; tipo: string; conductor_id: number | null }> {
+  const fd = new FormData();
+  fd.append("tipo", tipo);
+  fd.append("archivo", archivo);
+  if (conductorId) fd.append("conductor_id", String(conductorId));
+  const { data } = await api.post(`/subida/${token}/documento/`, fd, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function finalizarSubida(token: string): Promise<{ finalizado: boolean }> {
+  const { data } = await api.post(`/subida/${token}/finalizar/`);
+  return data;
+}

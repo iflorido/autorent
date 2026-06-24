@@ -191,6 +191,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 # En el contenedor se monta el volumen /app/documents -> data/documents del host.
 DOCUMENTS_ROOT = os.getenv("DOCUMENTS_ROOT", str(BASE_DIR / "documents"))
 
+# URL pública del sitio (para construir enlaces en los correos, p. ej. el
+# enlace mágico de subida de documentos). Sin barra final.
+SITE_URL = os.getenv("SITE_URL", "https://autorent.automaworks.es").rstrip("/")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 

@@ -271,6 +271,11 @@ class DocumentoReserva(models.Model):
     reserva = models.ForeignKey(
         Reserva, on_delete=models.CASCADE, related_name="documentos", verbose_name="Reserva",
     )
+    conductor = models.ForeignKey(
+        "ConductorAdicional", on_delete=models.CASCADE, blank=True, null=True,
+        related_name="documentos", verbose_name="Conductor adicional",
+        help_text="Si el documento es de un conductor adicional. Vacío = del titular.",
+    )
     tipo = models.CharField(max_length=20, choices=Tipo.choices, verbose_name="Tipo")
     archivo = models.FileField(
         upload_to=documento_upload_path, storage=documentos_storage,
@@ -362,3 +367,68 @@ class Cancelacion(models.Model):
 
     def __str__(self):
         return f"Cancelación de {self.reserva.localizador}"
+
+
+class TokenSubida(models.Model):
+    """Token de acceso (enlace mágico) para subir documentos sin login.
+
+    Se genera al confirmar la reserva (y de nuevo si el admin rechaza la
+    documentación). Es un secreto largo y aleatorio, con caducidad. De un solo
+    uso efectivo: al completar la subida se marca como usado.
+    """
+    reserva = models.ForeignKey(
+        Reserva, on_delete=models.CASCADE, related_name="tokens_subida",
+        verbose_name="Reserva",
+    )
+    token = models.CharField(
+        max_length=64, unique=True, editable=False, db_index=True, verbose_name="Token",
+    )
+    creado_at = models.DateTimeField(auto_now_add=True)
+    expira_at = models.DateTimeField(verbose_name="Expira")
+    usado_at = models.DateTimeField(blank=True, null=True, verbose_name="Usado")
+
+    class Meta:
+        verbose_name = "Token de subida"
+        verbose_name_plural = "Tokens de subida"
+        ordering = ["-creado_at"]
+
+    def __str__(self):
+        estado = "usado" if self.usado_at else ("expirado" if self.ha_expirado else "activo")
+        return f"Token {self.reserva.localizador} ({estado})"
+
+    @staticmethod
+    def _nuevo_token():
+        import secrets
+        return secrets.token_urlsafe(32)
+
+    @classmethod
+    def generar(cls, reserva, dias_validez=7):
+        """Crea un token nuevo para la reserva (invalida los anteriores)."""
+        from django.utils import timezone
+        from datetime import timedelta
+        # Invalida tokens activos previos de esa reserva (marcándolos usados).
+        cls.objects.filter(reserva=reserva, usado_at__isnull=True).update(
+            usado_at=timezone.now()
+        )
+        token = cls._nuevo_token()
+        while cls.objects.filter(token=token).exists():
+            token = cls._nuevo_token()
+        return cls.objects.create(
+            reserva=reserva, token=token,
+            expira_at=timezone.now() + timedelta(days=dias_validez),
+        )
+
+    @property
+    def ha_expirado(self):
+        from django.utils import timezone
+        return timezone.now() > self.expira_at
+
+    @property
+    def es_valido(self):
+        """Válido si no está usado ni expirado."""
+        return self.usado_at is None and not self.ha_expirado
+
+    def marcar_usado(self):
+        from django.utils import timezone
+        self.usado_at = timezone.now()
+        self.save(update_fields=["usado_at"])

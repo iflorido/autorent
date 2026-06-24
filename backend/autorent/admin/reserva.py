@@ -15,6 +15,7 @@ from ..models import (
     Pago,
     Reserva,
     ReservaExtra,
+    TokenSubida,
 )
 
 
@@ -48,7 +49,7 @@ class ConductorAdicionalInline(admin.TabularInline):
 class DocumentoReservaInline(admin.TabularInline):
     model = DocumentoReserva
     extra = 0
-    fields = ("tipo", "archivo", "ver_seguro", "estado", "notas_revision", "subido_at")
+    fields = ("tipo", "conductor", "archivo", "ver_seguro", "estado", "notas_revision", "subido_at")
     readonly_fields = ("subido_at", "ver_seguro")
 
     def ver_seguro(self, obj):
@@ -110,6 +111,25 @@ class ReservaAdmin(admin.ModelAdmin):
         # Tras guardar los inlines (extras), recalcular de nuevo el total.
         super().save_related(request, form, formsets, change)
         form.instance.recalcular_totales()
+
+    actions = ["rechazar_documentacion"]
+
+    @admin.action(description="Rechazar documentación y reenviar enlace al cliente")
+    def rechazar_documentacion(self, request, queryset):
+        """Marca los documentos como rechazados, genera un token nuevo y avisa."""
+        from ..models import DocumentoReserva, TokenSubida
+        from ..notificaciones import enviar_correo_documentos_rechazados
+        enviadas = 0
+        for reserva in queryset:
+            reserva.documentos.update(estado=DocumentoReserva.Estado.RECHAZADO)
+            token = TokenSubida.generar(reserva, dias_validez=7)
+            if enviar_correo_documentos_rechazados(reserva, token):
+                enviadas += 1
+        self.message_user(
+            request,
+            f"Documentación rechazada en {queryset.count()} reserva(s). "
+            f"Correo de nuevo enlace enviado: {enviadas}.",
+        )
 
 
 @admin.register(Pago)

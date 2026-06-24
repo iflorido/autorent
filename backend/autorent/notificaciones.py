@@ -31,11 +31,12 @@ def _fmt(valor):
         return str(valor)
 
 
-def enviar_correos_reserva(reserva):
+def enviar_correos_reserva(reserva, token_subida=None):
     """Envía el correo de confirmación al cliente y el aviso a la empresa.
 
-    Devuelve un dict {cliente: bool, empresa: bool} indicando qué envíos
-    tuvieron éxito. Nunca lanza excepción hacia arriba.
+    Si se pasa token_subida, el correo del cliente incluye el enlace mágico
+    para subir su documentación. Devuelve un dict {cliente: bool, empresa: bool}.
+    Nunca lanza excepción hacia arriba.
     """
     from core.models import EmailConfig
     resultado = {"cliente": False, "empresa": False}
@@ -55,7 +56,7 @@ def enviar_correos_reserva(reserva):
 
     # 1) Correo al cliente.
     try:
-        asunto_cli, texto_cli, html_cli = _email_cliente(reserva, site)
+        asunto_cli, texto_cli, html_cli = _email_cliente(reserva, site, token_subida)
         msg = EmailMultiAlternatives(
             asunto_cli, texto_cli, from_email=remitente,
             to=[reserva.cliente.email], connection=connection,
@@ -96,9 +97,18 @@ def _bloque_extras(reserva):
     return "\n".join(lineas)
 
 
-def _email_cliente(reserva, site):
+def _enlace_subida(token_subida):
+    """Construye la URL del enlace mágico de subida de documentos."""
+    if not token_subida:
+        return None
+    from django.conf import settings
+    return f"{settings.SITE_URL}/subir-documentos/{token_subida.token}"
+
+
+def _email_cliente(reserva, site, token_subida=None):
     nombre_empresa = site.nombre or "AutoRent"
     asunto = f"Tu reserva {reserva.localizador} — {nombre_empresa}"
+    enlace = _enlace_subida(token_subida)
 
     datos_banco = ""
     if reserva.metodo_pago == "transferencia" and (site.banco_iban or "").strip():
@@ -111,6 +121,17 @@ def _email_cliente(reserva, site):
             f"  Importe: {_fmt(reserva.total)} €\n"
             "\nTu vehículo queda pre-reservado durante 24 horas. En cuanto recibamos el "
             "justificante, confirmaremos la reserva en firme."
+        )
+
+    bloque_docs = ""
+    if enlace:
+        bloque_docs = (
+            "\n\nDOCUMENTACIÓN NECESARIA\n"
+            "Para poder formalizar tu contrato necesitamos el DNI/NIE y el carnet de "
+            "conducir del conductor titular"
+            + (" y de cada conductor adicional.\n" if reserva.conductores_adicionales.exists() else ".\n")
+            + f"Súbela de forma segura desde este enlace (válido 7 días):\n{enlace}\n"
+            "Es un enlace personal: no lo compartas. Podrás subir cada documento una vez."
         )
 
     extras = _bloque_extras(reserva)
@@ -126,7 +147,8 @@ def _email_cliente(reserva, site):
         f"{extras_txt}\n"
         f"Total alquiler: {_fmt(reserva.total)} €\n"
         f"Fianza (depósito): {_fmt(reserva.fianza)} €\n"
-        f"{datos_banco}\n\n"
+        f"{datos_banco}"
+        f"{bloque_docs}\n\n"
         f"Gracias por confiar en {nombre_empresa}."
     )
 
@@ -147,10 +169,28 @@ def _email_cliente(reserva, site):
             <td style="text-align:right">{_fmt(reserva.fianza)} €</td></tr>
       </table>
       {_html_banco(reserva, site)}
+      {_html_subida(enlace, reserva)}
       <p style="color:#4b5c78;font-size:14px">Gracias por confiar en {escape(nombre_empresa)}.</p>
     </div>
     """
     return asunto, texto, html
+
+
+def _html_subida(enlace, reserva):
+    if not enlace:
+        return ""
+    extra = (" y de cada conductor adicional" if reserva.conductores_adicionales.exists() else "")
+    return f"""
+    <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:10px;padding:16px;margin:16px 0">
+      <p style="margin:0 0 8px;font-weight:600">Sube tu documentación</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#155e75">
+        Necesitamos el DNI/NIE y el carnet de conducir del titular{extra}.
+        El enlace es personal y caduca en 7 días.</p>
+      <a href="{enlace}" style="display:inline-block;background:#0891b2;color:#fff;
+         text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:600">
+        Subir documentación</a>
+    </div>
+    """
 
 
 def _html_banco(reserva, site):
@@ -213,3 +253,61 @@ def _email_empresa(reserva, site):
     </div>
     """
     return asunto, texto, html
+
+
+def enviar_correo_documentos_rechazados(reserva, token_subida, motivo=""):
+    """Avisa al cliente de que su documentación fue rechazada y da un enlace nuevo.
+
+    Se llama desde el admin cuando el personal rechaza documentos. Tolerante a
+    fallos: registra el error pero no lanza excepción.
+    """
+    from core.models import EmailConfig
+    site = _site_config()
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    nombre_empresa = site.nombre or "AutoRent"
+    enlace = _enlace_subida(token_subida)
+
+    asunto = f"Documentación de tu reserva {reserva.localizador}: revisión necesaria"
+    motivo_txt = f"\nMotivo: {motivo}\n" if motivo else ""
+
+    texto = (
+        f"Hola {reserva.cliente.nombre},\n\n"
+        f"Hemos revisado la documentación de tu reserva {reserva.localizador} y "
+        f"necesitamos que vuelvas a subir alguno de los documentos.\n"
+        f"{motivo_txt}\n"
+        f"Sube de nuevo tu documentación desde este enlace (válido 7 días):\n{enlace}\n\n"
+        f"Disculpa las molestias. Gracias por tu colaboración.\n"
+        f"{nombre_empresa}"
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#b45309">Revisión de documentación</h2>
+      <p>Hola {escape(reserva.cliente.nombre)},</p>
+      <p>Hemos revisado la documentación de tu reserva
+         <strong>{reserva.localizador}</strong> y necesitamos que vuelvas a subir
+         alguno de los documentos.</p>
+      {f'<p style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:14px"><strong>Motivo:</strong> {escape(motivo)}</p>' if motivo else ''}
+      <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:10px;padding:16px;margin:16px 0">
+        <a href="{enlace}" style="display:inline-block;background:#0891b2;color:#fff;
+           text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:600">
+          Volver a subir documentación</a>
+        <p style="margin:10px 0 0;font-size:13px;color:#155e75">El enlace caduca en 7 días.</p>
+      </div>
+      <p style="color:#4b5c78;font-size:14px">Disculpa las molestias. {escape(nombre_empresa)}.</p>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(
+            asunto, texto, from_email=remitente,
+            to=[reserva.cliente.email], connection=connection,
+        )
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo enviando correo de rechazo de %s: %s", reserva.localizador, exc)
+        return False

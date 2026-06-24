@@ -301,10 +301,14 @@ def crear_reserva(request):
         )
 
     # 7) Respuesta con el localizador y el desglose.
+    # Generar el token de subida de documentos (enlace mágico, 7 días).
+    from .models import TokenSubida
+    token_subida = TokenSubida.generar(reserva, dias_validez=7)
+
     # Enviar correos (al cliente y a la empresa). Fuera de la transacción:
     # si el envío falla, la reserva ya está creada y no se revierte.
     from .notificaciones import enviar_correos_reserva
-    enviar_correos_reserva(reserva)
+    enviar_correos_reserva(reserva, token_subida=token_subida)
 
     salida = ReservaCreadaSerializer(reserva)
     return Response(salida.data, status=status.HTTP_201_CREATED)
@@ -412,3 +416,133 @@ def servir_documento(request, doc_id):
         raise Http404
 
     return FileResponse(doc.archivo.open("rb"), as_attachment=False)
+
+
+# ─────────────────────────────────────────────────────────────
+# Subida de documentos vía ENLACE MÁGICO (token, sin login)
+# ─────────────────────────────────────────────────────────────
+
+def _token_valido_o_respuesta(token):
+    """Devuelve (token_obj, None) si es válido, o (None, Response) si no."""
+    from .models import TokenSubida
+    try:
+        t = TokenSubida.objects.select_related("reserva").get(token=token)
+    except TokenSubida.DoesNotExist:
+        return None, Response({"detail": "Enlace no válido."}, status=status.HTTP_404_NOT_FOUND)
+    if t.usado_at is not None:
+        return None, Response(
+            {"detail": "Este enlace ya se ha utilizado.", "estado": "usado"},
+            status=status.HTTP_410_GONE,
+        )
+    if t.ha_expirado:
+        return None, Response(
+            {"detail": "Este enlace ha caducado.", "estado": "expirado"},
+            status=status.HTTP_410_GONE,
+        )
+    return t, None
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def info_subida(request, token):
+    """Datos necesarios para el formulario de subida (sin login).
+
+    GET /api/subida/<token>/
+    Devuelve el titular y los conductores adicionales, para que el frontend
+    muestre qué documentos pedir de cada uno.
+    """
+    t, err = _token_valido_o_respuesta(token)
+    if err:
+        return err
+    reserva = t.reserva
+
+    conductores = [
+        {"id": co.id, "nombre_completo": co.nombre_completo}
+        for co in reserva.conductores_adicionales.all()
+    ]
+    # Documentos ya subidos (para indicar el progreso).
+    subidos = [
+        {"tipo": d.tipo, "conductor_id": d.conductor_id}
+        for d in reserva.documentos.all()
+    ]
+    return Response({
+        "localizador": reserva.localizador,
+        "titular": reserva.cliente.nombre_completo,
+        "vehiculo": reserva.vehiculo.nombre,
+        "conductores_adicionales": conductores,
+        "documentos_subidos": subidos,
+        "expira_at": t.expira_at,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def subir_documento_token(request, token):
+    """Sube un documento usando el token (sin login).
+
+    POST /api/subida/<token>/
+    Campos: tipo, archivo, conductor_id (opcional; vacío = titular).
+    """
+    import os
+    from .models import DocumentoReserva, ConductorAdicional
+
+    t, err = _token_valido_o_respuesta(token)
+    if err:
+        return err
+    reserva = t.reserva
+
+    tipo = request.data.get("tipo", "otro")
+    if tipo not in DOC_TIPOS_VALIDOS:
+        return Response({"detail": "Tipo de documento no válido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    archivo = request.FILES.get("archivo")
+    if not archivo:
+        return Response({"detail": "No se ha enviado ningún archivo."}, status=status.HTTP_400_BAD_REQUEST)
+    if archivo.size > DOC_MAX_BYTES:
+        return Response({"detail": "El archivo supera el tamaño máximo de 10 MB."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    ext = os.path.splitext(archivo.name)[1].lower()
+    if ext not in DOC_EXTENSIONES:
+        return Response({"detail": "Formato no permitido. Usa JPG, PNG, WEBP o PDF."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    content_type = getattr(archivo, "content_type", "") or ""
+    if content_type and content_type not in DOC_MIME:
+        return Response({"detail": "Tipo de archivo no permitido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Conductor adicional (opcional). Debe pertenecer a la misma reserva.
+    conductor = None
+    conductor_id = request.data.get("conductor_id")
+    if conductor_id:
+        try:
+            conductor = ConductorAdicional.objects.get(pk=conductor_id, reserva=reserva)
+        except ConductorAdicional.DoesNotExist:
+            return Response({"detail": "Conductor no válido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Reemplaza un documento previo del mismo tipo y conductor (re-subida).
+    DocumentoReserva.objects.filter(
+        reserva=reserva, conductor=conductor, tipo=tipo,
+    ).delete()
+
+    doc = DocumentoReserva.objects.create(
+        reserva=reserva, conductor=conductor, tipo=tipo, archivo=archivo,
+        estado=DocumentoReserva.Estado.PENDIENTE,
+    )
+    return Response(
+        {"id": doc.id, "tipo": doc.tipo, "conductor_id": conductor.id if conductor else None,
+         "subido": True},
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def finalizar_subida(request, token):
+    """Marca el token como usado al terminar la subida (un solo uso).
+
+    POST /api/subida/<token>/finalizar/
+    """
+    t, err = _token_valido_o_respuesta(token)
+    if err:
+        return err
+    t.marcar_usado()
+    return Response({"finalizado": True})

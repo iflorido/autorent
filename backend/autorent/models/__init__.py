@@ -22,6 +22,7 @@ from .reserva import (
     Pago,
     Reserva,
     ReservaExtra,
+    TokenSubida,
 )
 
 __all__ = [
@@ -38,6 +39,7 @@ __all__ = [
     "Reserva",
     "ReservaExtra",
     "ConductorAdicional",
+    "TokenSubida",
     "DocumentoReserva",
     "Pago",
     "Factura",
