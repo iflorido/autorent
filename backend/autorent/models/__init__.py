@@ -6,6 +6,7 @@ aquí para que Django los descubra como `autorent.<Modelo>`.
 """
 from .vehiculo import (
     BloqueoFecha,
+    CategoriaVehiculo,
     Extra,
     FotoVehiculo,
     Mantenimiento,
@@ -31,6 +32,7 @@ from .reserva import (
 __all__ = [
     # vehiculo
     "Vehiculo",
+    "CategoriaVehiculo",
     "FotoVehiculo",
     "RangoPrecio",
     "TemporadaPrecio",
