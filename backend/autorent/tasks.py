@@ -45,3 +45,22 @@ def generar_contrato_reserva(reserva_id):
 
     logger.info("Contrato generado para %s (hash %s)", reserva.localizador, digest[:12])
     return reserva.localizador
+
+
+@shared_task
+def procesar_telemetria_id(posicion_id):
+    """Procesa una posición ya insertada (por FastAPI) aplicando la lógica de
+    detección de eventos, alertas, driver score y mantenimiento.
+
+    FastAPI inserta la posición y encola esta tarea; el worker la ejecuta con
+    la misma lógica que usa la ingesta de Django (sin duplicar nada).
+    """
+    from .models import Posicion
+    from .flota_logica import procesar_telemetria
+    try:
+        posicion = Posicion.objects.select_related("dispositivo__vehiculo").get(pk=posicion_id)
+    except Posicion.DoesNotExist:
+        logger.warning("procesar_telemetria_id: posición %s no existe", posicion_id)
+        return None
+    procesar_telemetria(posicion)
+    return posicion_id
