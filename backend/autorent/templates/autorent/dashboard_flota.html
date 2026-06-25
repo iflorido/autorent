@@ -6,16 +6,13 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Estirar la cadena de contenedores del admin para que el mapa llene
-           todo el alto disponible (aprovechando el alto que impone el menú
-           lateral) en vez de depender de un calc() fijo. */
-        .content-wrapper { display: flex; flex-direction: column; }
-        .content-wrapper > .content { flex: 1 1 auto; display: flex; flex-direction: column; }
-        .content-wrapper > .content > .container-fluid { flex: 1 1 auto; display: flex; flex-direction: column; }
+        /* Altura del mapa: se fija por JS midiendo el espacio real hasta el
+           fondo de la ventana (ver ajustarAltura). El calc() es solo el valor
+           inicial antes de que el JS calcule. */
         #map-container {
             position: relative;
-            flex: 1 1 auto;        /* ocupa todo el alto restante */
-            min-height: 70vh;      /* nunca más bajo que esto */
+            height: calc(100vh - 220px);
+            min-height: 500px;
             width: 100%;
             overflow: hidden;
             border: 1px solid #ddd;
@@ -181,9 +178,20 @@
         }).addTo(map);
 
         // Leaflet necesita recalcular tamaño tras render del layout admin.
-        setTimeout(function () { map.invalidateSize(); }, 300);
-        // Recalcular si cambia el tamaño de la ventana (el flex puede variar el alto).
-        window.addEventListener('resize', function () { map.invalidateSize(); });
+        // Ajusta la altura del mapa para que llegue hasta el fondo de la ventana.
+        function ajustarAltura() {
+            var cont = document.getElementById('map-container');
+            if (!cont) return;
+            var top = cont.getBoundingClientRect().top;   // distancia desde arriba
+            var alto = window.innerHeight - top - 20;       // hasta abajo, con margen
+            if (alto < 500) alto = 500;                     // mínimo razonable
+            cont.style.height = alto + 'px';
+            if (map) map.invalidateSize();
+        }
+
+        ajustarAltura();
+        setTimeout(ajustarAltura, 250);   // recalcular tras render del layout
+        window.addEventListener('resize', ajustarAltura);
 
         if (window.innerWidth > 768) {
             document.getElementById('panel-flota').classList.add('is-open');

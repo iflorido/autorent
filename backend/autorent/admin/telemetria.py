@@ -15,6 +15,8 @@ class DispositivoAdmin(admin.ModelAdmin):
 
 @admin.register(Posicion)
 class PosicionAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    show_full_result_count = False  # tabla grande: evita COUNT(*) costoso
     list_display = ("dispositivo", "timestamp", "velocidad", "ignicion", "odometro")
     list_filter = ("ignicion", "movimiento")
     search_fields = ("dispositivo__imei",)
@@ -35,6 +37,7 @@ class ReglaMantenimientoAdmin(admin.ModelAdmin):
 
 @admin.register(EventoConduccion)
 class EventoConduccionAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ("tipo", "vehiculo", "severidad", "velocidad", "timestamp", "reserva")
     list_filter = ("tipo",)
     search_fields = ("vehiculo__matricula",)
@@ -43,6 +46,7 @@ class EventoConduccionAdmin(admin.ModelAdmin):
 
 @admin.register(Alerta)
 class AlertaAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ("tipo", "vehiculo", "mensaje", "leida", "created_at")
     list_filter = ("tipo", "leida")
     search_fields = ("vehiculo__matricula", "mensaje")
