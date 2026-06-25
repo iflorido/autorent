@@ -275,6 +275,7 @@
             <div class="detalle-fila"><span class="etq">Categoría</span><span class="val">${v.categoria}</span></div>
             <div class="detalle-fila"><span class="etq">Estado</span><span class="val">${v.online ? '🟢 Online' : '⚪ Offline'}</span></div>
             <div class="detalle-fila"><span class="etq">Velocidad</span><span class="val">${fmt(p.velocidad)} km/h</span></div>
+            <div class="detalle-fila"><span class="etq">Límite</span><span class="val">${v.limite_velocidad} km/h</span></div>
             <div class="detalle-fila"><span class="etq">Encendido</span><span class="val">${p.ignicion ? 'Sí' : 'No'}</span></div>
             <div class="detalle-fila"><span class="etq">Odómetro</span><span class="val">${p.odometro != null ? Number(p.odometro).toLocaleString() + ' km' : '—'}</span></div>
             <div class="detalle-fila"><span class="etq">Combustible</span><span class="val">${fmt(p.nivel_combustible)} %</span></div>

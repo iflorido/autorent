@@ -74,6 +74,11 @@ class Vehiculo(models.Model):
     km_actuales = models.PositiveIntegerField(
         default=0, verbose_name="Kilómetros actuales",
     )
+    limite_velocidad = models.PositiveIntegerField(
+        blank=True, null=True, verbose_name="Límite de velocidad (km/h)",
+        help_text="Para alertas de exceso. Si se deja vacío, se usa el límite "
+                  "por defecto de su categoría.",
+    )
     activo = models.BooleanField(
         default=True, verbose_name="Activo",
         help_text="Si se desmarca, no aparece en la web ni admite reservas.",
@@ -222,6 +227,26 @@ class Vehiculo(models.Model):
         if self.categoria == self.Categoria.TURISMO:
             return {"edad_min": 21, "antiguedad_min": 2}
         return {"edad_min": 23, "antiguedad_min": 2}
+
+    # Límites de velocidad por defecto según categoría (km/h, vías interurbanas
+    # en España). Se usan cuando el vehículo no tiene un límite propio.
+    LIMITES_CATEGORIA = {
+        Categoria.TURISMO: 120,
+        Categoria.CAMPER: 100,
+        Categoria.FURGONETA: 100,
+        Categoria.INDUSTRIAL: 90,
+        Categoria.MOTO: 120,
+    }
+
+    def limite_velocidad_efectivo(self, defecto_global=120):
+        """Límite de velocidad aplicable a este vehículo.
+
+        Prioridad: límite propio del vehículo -> límite de su categoría ->
+        valor global por defecto.
+        """
+        if self.limite_velocidad:
+            return self.limite_velocidad
+        return self.LIMITES_CATEGORIA.get(self.categoria, defecto_global)
 
     @staticmethod
     def _anios_entre(desde, hasta):

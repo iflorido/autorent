@@ -77,7 +77,7 @@ class VehiculoAdmin(admin.ModelAdmin):
                        "capacidad_carga", "descripcion"),
         }),
         ("Operativa", {
-            "fields": ("sede", "fianza", "km_actuales", "activo", "extras"),
+            "fields": ("sede", "fianza", "km_actuales", "limite_velocidad", "activo", "extras"),
         }),
     )
 

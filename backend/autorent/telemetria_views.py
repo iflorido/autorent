@@ -150,6 +150,7 @@ def flota_estado(request):
             "vehiculo": v.nombre,
             "matricula": v.matricula,
             "categoria": v.get_categoria_display(),
+            "limite_velocidad": v.limite_velocidad_efectivo(),
             "imei": disp.imei,
             "modelo_dispositivo": disp.get_modelo_display(),
             "online": online,

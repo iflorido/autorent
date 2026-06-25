@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 UMBRAL_FRENAZO = getattr(settings, "GPS_UMBRAL_FRENAZO_G", 0.45)
 UMBRAL_ACELERON = getattr(settings, "GPS_UMBRAL_ACELERON_G", 0.45)
 UMBRAL_CURVA = getattr(settings, "GPS_UMBRAL_CURVA_G", 0.40)
-LIMITE_VELOCIDAD = getattr(settings, "GPS_LIMITE_VELOCIDAD_KMH", 120)
+# Límite de velocidad global por DEFECTO (último recurso si un vehículo no tiene
+# límite propio ni su categoría está mapeada). El límite real es por vehículo.
+LIMITE_VELOCIDAD_DEFECTO = getattr(settings, "GPS_LIMITE_VELOCIDAD_KMH", 120)
 
 
 def _reserva_activa(vehiculo, momento):
@@ -91,15 +93,17 @@ def _detectar_conduccion(posicion, vehiculo, reserva):
 
 def _detectar_velocidad(posicion, vehiculo, reserva):
     from .models import EventoConduccion, Alerta
-    if posicion.velocidad and posicion.velocidad > LIMITE_VELOCIDAD:
-        exceso = posicion.velocidad - LIMITE_VELOCIDAD
+    # Límite efectivo del vehículo (propio -> categoría -> global por defecto).
+    limite = vehiculo.limite_velocidad_efectivo(defecto_global=LIMITE_VELOCIDAD_DEFECTO)
+    if posicion.velocidad and posicion.velocidad > limite:
+        exceso = posicion.velocidad - limite
         _crear_evento(vehiculo, reserva, EventoConduccion.Tipo.VELOCIDAD, exceso,
                       posicion, velocidad=posicion.velocidad)
         # Alerta de velocidad (no deduplicada: cada exceso importa).
         Alerta.objects.create(
             vehiculo=vehiculo, tipo=Alerta.Tipo.VELOCIDAD,
             mensaje=f"Exceso de velocidad: {posicion.velocidad:.0f} km/h "
-                    f"(límite {LIMITE_VELOCIDAD}).",
+                    f"(límite {limite}).",
         )
 
 
