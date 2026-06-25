@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import asyncpg
 from celery import Celery
-from fastapi import FastAPI, Header, Request
+from fastapi import BackgroundTasks, FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
 ROOT_PATH = os.getenv("API_ROOT_PATH", "/gps")
@@ -37,6 +37,17 @@ DB_CONFIG = {
 # --- Cliente Celery (mismo broker Redis que el worker de Django) ---
 CELERY_BROKER = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 celery_app = Celery("autorent_api", broker=CELERY_BROKER)
+# Timeouts cortos: si Redis no responde, fallar rápido en vez de colgar la
+# respuesta de la ingesta. La posición ya está guardada; encolar es secundario.
+celery_app.conf.update(
+    broker_transport_options={
+        "socket_timeout": 2,
+        "socket_connect_timeout": 2,
+    },
+    broker_connection_retry=False,
+    broker_connection_retry_on_startup=False,
+    broker_connection_max_retries=0,
+)
 
 
 @asynccontextmanager
@@ -96,8 +107,19 @@ def _int_or_none(datos, clave):
         return None
 
 
+def _encolar_procesamiento(posicion_id):
+    """Encola la tarea de procesamiento. Si Redis falla, no pasa nada: la
+    posición ya está guardada. Se ejecuta en segundo plano (no bloquea la
+    respuesta HTTP)."""
+    try:
+        celery_app.send_task("autorent.tasks.procesar_telemetria_id", args=[posicion_id])
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @app.post("/ingesta/")
-async def ingesta(request: Request, x_ingest_token: str = Header(default="")):
+async def ingesta(request: Request, background: BackgroundTasks,
+                  x_ingest_token: str = Header(default="")):
     """Recibe una trama de telemetría decodificada, la inserta y encola su
     procesamiento.
 
@@ -175,11 +197,8 @@ async def ingesta(request: Request, x_ingest_token: str = Header(default="")):
             ts, dispositivo_id,
         )
 
-    # 7) Encolar el procesamiento en el worker de Django (no bloquea la ingesta).
-    try:
-        celery_app.send_task("autorent.tasks.procesar_telemetria_id", args=[posicion_id])
-    except Exception:  # noqa: BLE001
-        # Si Redis falla, la posición ya está guardada; no perdemos el dato.
-        pass
+    # 7) Encolar el procesamiento en segundo plano (no bloquea la respuesta).
+    #    La posición ya está guardada; si Redis falla, no perdemos el dato.
+    background.add_task(_encolar_procesamiento, posicion_id)
 
     return JSONResponse({"ok": True, "id": posicion_id}, status_code=201)
