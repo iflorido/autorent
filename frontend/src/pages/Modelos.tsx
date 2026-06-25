@@ -4,22 +4,24 @@ import VehiculoCard from "@/components/ui/VehiculoCard";
 import BuscadorSeccion from "@/components/ui/BuscadorSeccion";
 import PasosReserva from "@/components/ui/PasosReserva";
 import FadeIn from "@/components/ui/FadeIn";
-import { getVehiculos } from "@/lib/api";
+import { getVehiculos, getCategorias, type CategoriaItem } from "@/lib/api";
 import { useHeroOscuro } from "@/hooks/useHeroOscuro";
 import type { VehiculoList } from "@/types";
-
-const FILTROS = [
-  { slug: "", label: "Todos" },
-  { slug: "turismo", label: "Turismo" },
-  { slug: "camper", label: "Camper" },
-  { slug: "industrial", label: "Industrial" },
-];
 
 export default function Modelos() {
   useHeroOscuro();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vehiculos, setVehiculos] = useState<VehiculoList[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
   const [cargando, setCargando] = useState(true);
+
+  // Filtros: "Todos" + las categorías que existan en el admin (dinámico).
+  const filtros = [{ slug: "", label: "Todos" }, ...categorias.map((c) => ({ slug: c.slug, label: c.nombre }))];
+
+  // Cargar las categorías disponibles una vez.
+  useEffect(() => {
+    getCategorias().then(setCategorias).catch(() => setCategorias([]));
+  }, []);
 
   const categoria = searchParams.get("categoria") || "";
   const fechaInicio = searchParams.get("fecha_inicio") || undefined;
@@ -63,7 +65,7 @@ export default function Modelos() {
       {/* Filtros de categoría */}
       <div className="max-w-container mx-auto px-6 pt-8">
         <div className="flex flex-wrap gap-2">
-          {FILTROS.map((f) => (
+          {filtros.map((f) => (
             <button
               key={f.slug}
               onClick={() => cambiarCategoria(f.slug)}

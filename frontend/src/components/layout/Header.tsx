@@ -1,25 +1,25 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useHero } from "@/hooks/useHero";
-
-const CATEGORIAS = [
-  { slug: "turismo", label: "Turismo", icon: "M3 13l2-5h14l2 5M5 13h14v4H5z" },
-  { slug: "industrial", label: "Industrial", icon: "M3 17h13V7H3zM16 10h4l1 3v4h-5z" },
-  { slug: "camper", label: "Camper", icon: "M3 13h18v4H3zM5 13V8h11l3 5" },
-  { slug: "todos", label: "Todos los modelos", icon: "M4 6h16M4 12h16M4 18h16" },
-];
+import { getCategorias, type CategoriaItem } from "@/lib/api";
 
 const ENLACES = [
   { to: "/localizaciones", label: "Localizaciones" },
   { to: "/tarifas", label: "Tarifas" },
   { to: "/extras", label: "Extras" },
-  { to: "/faq", label: "Preguntas frecuentes" },
+  { to: "/faq", label: "FAQ" },
 ];
 
 export default function Header() {
   const { tieneHeroOscuro } = useHero();
   const [megaOpen, setMegaOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
+
+  // Categorías dinámicas (las que existan en el admin con vehículos).
+  useEffect(() => {
+    getCategorias().then(setCategorias).catch(() => setCategorias([]));
+  }, []);
 
   // El header es transparente solo si la página tiene hero oscuro detrás.
   const tieneHero = tieneHeroOscuro;
@@ -86,21 +86,27 @@ export default function Header() {
             {megaOpen && (
               <div className="absolute left-0 top-full w-[560px] bg-bg-2 border border-border rounded-xl shadow-soft p-5 grid grid-cols-2 gap-6 text-text">
                 <div className="grid grid-cols-2 gap-2.5">
-                  {CATEGORIAS.map((c) => (
+                  <Link
+                    to="/modelos"
+                    onClick={() => setMegaOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition bg-accent text-white col-span-2"
+                  >
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span className="text-[13px]">Todos los modelos</span>
+                  </Link>
+                  {categorias.map((c) => (
                     <Link
                       key={c.slug}
-                      to={`/modelos${c.slug !== "todos" ? `?categoria=${c.slug}` : ""}`}
+                      to={`/modelos?categoria=${c.slug}`}
                       onClick={() => setMegaOpen(false)}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition ${
-                        c.slug === "todos"
-                          ? "bg-accent text-white"
-                          : "bg-accent-dim text-text hover:bg-surface-2"
-                      }`}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition bg-accent-dim text-text hover:bg-surface-2"
                     >
                       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d={c.icon} />
+                        <path d="M3 13l2-5h14l2 5M5 13h14v4H5z" />
                       </svg>
-                      <span className="text-[13px]">{c.label}</span>
+                      <span className="text-[13px]">{c.nombre}</span>
                     </Link>
                   ))}
                 </div>
@@ -121,25 +127,14 @@ export default function Header() {
           </div>
 
           <Link to="/modelos" className="hover:text-accent transition" style={{ color: "inherit" }}>Modelos</Link>
-          <Link to="/reservas" className="hover:text-accent transition" style={{ color: "inherit" }}>Reservas</Link>
+          <Link to="/tarifas" className="hover:text-accent transition" style={{ color: "inherit" }}>Tarifas</Link>
+          <Link to="/faq" className="hover:text-accent transition" style={{ color: "inherit" }}>FAQ</Link>
+          <Link to="/stack" className="hover:text-accent transition" style={{ color: "inherit" }}>Stack</Link>
           <Link to="/contacto" className="hover:text-accent transition" style={{ color: "inherit" }}>Contacto</Link>
         </nav>
 
         {/* Iconos usuario / admin a la derecha */}
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/reservas"
-            title="Mi cuenta"
-            className="w-9 h-9 rounded-full flex items-center justify-center transition"
-            style={{
-              color: solido ? "var(--text)" : "#fff",
-              background: solido ? "var(--surface-2)" : "rgba(255,255,255,0.15)",
-            }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-            </svg>
-          </Link>
           <a
             href="/admin/"
             title="Administración"

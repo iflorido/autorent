@@ -9,6 +9,7 @@ import Tarifas from "@/pages/Tarifas";
 import FAQ from "@/pages/FAQ";
 import Contacto from "@/pages/Contacto";
 import Reserva from "@/pages/Reserva";
+import Stack from "@/pages/Stack";
 import SubirDocumentos from "@/pages/SubirDocumentos";
 import AvisoLegal from "@/pages/AvisoLegal";
 import Privacidad from "@/pages/Privacidad";
@@ -42,7 +43,7 @@ export default function App() {
             <Route path="vehiculo/:slug" element={<Vehiculo />} />
             <Route path="reserva/:slug" element={<Reserva />} />
             <Route path="subir-documentos/:token" element={<SubirDocumentos />} />
-            <Route path="reservas" element={<Placeholder titulo="Reservas" />} />
+            <Route path="stack" element={<Stack />} />
             <Route path="contacto" element={<Contacto />} />
             <Route path="localizaciones" element={<Localizaciones />} />
             <Route path="tarifas" element={<Tarifas />} />

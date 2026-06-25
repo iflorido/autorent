@@ -592,3 +592,23 @@ def servir_contrato(request, reserva_id):
 
     return FileResponse(contrato.archivo.open("rb"), as_attachment=False,
                         filename=f"contrato_{contrato.reserva.localizador}.pdf")
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def categorias_vehiculo(request):
+    """Lista las categorías de vehículo que tienen al menos un vehículo activo.
+
+    GET /api/categorias/
+    Para los filtros dinámicos del catálogo en el frontend.
+    """
+    from .models import CategoriaVehiculo
+    cats = (
+        CategoriaVehiculo.objects.filter(vehiculos__activo=True)
+        .distinct()
+        .order_by("orden", "nombre")
+    )
+    return Response([
+        {"slug": c.slug, "nombre": c.nombre}
+        for c in cats
+    ])

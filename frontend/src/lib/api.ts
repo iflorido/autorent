@@ -35,6 +35,16 @@ export async function getExtras(): Promise<Extra[]> {
   return data;
 }
 
+export interface CategoriaItem {
+  slug: string;
+  nombre: string;
+}
+
+export async function getCategorias(): Promise<CategoriaItem[]> {
+  const { data } = await api.get<CategoriaItem[]>("/categorias/");
+  return data;
+}
+
 export async function getVehiculos(
   filtros: VehiculoFiltros = {},
 ): Promise<VehiculoList[]> {

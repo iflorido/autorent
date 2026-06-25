@@ -23,6 +23,7 @@ urlpatterns = [
     path("subida/<str:token>/", api_views.info_subida, name="info-subida"),
     path("subida/<str:token>/documento/", api_views.subir_documento_token, name="subir-documento-token"),
     path("subida/<str:token>/finalizar/", api_views.finalizar_subida, name="finalizar-subida"),
+    path("categorias/", api_views.categorias_vehiculo, name="categoria-list"),
     path("vehiculos/", api_views.VehiculoListView.as_view(), name="vehiculo-list"),
     path("vehiculos/<slug:slug>/", api_views.VehiculoDetailView.as_view(), name="vehiculo-detail"),
     path("vehiculos/<int:pk>/precio/", api_views.vehiculo_precio, name="vehiculo-precio"),
