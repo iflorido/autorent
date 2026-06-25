@@ -2,6 +2,7 @@
 from django.urls import path
 
 from . import api_views
+from . import telemetria_views
 
 app_name = "autorent"
 
@@ -12,6 +13,10 @@ urlpatterns = [
     path("reservas/<str:localizador>/documentos/", api_views.subir_documento, name="subir-documento"),
     path("documentos/<int:doc_id>/", api_views.servir_documento, name="servir-documento"),
     path("contratos/<int:reserva_id>/", api_views.servir_contrato, name="servir-contrato"),
+    # Telemetría GPS
+    path("gps/ingesta/", telemetria_views.ingesta_telemetria, name="gps-ingesta"),
+    path("gps/flota/", telemetria_views.flota_estado, name="gps-flota"),
+    path("gps/vehiculo/<int:vehiculo_id>/historico/", telemetria_views.vehiculo_historico, name="gps-historico"),
     path("subida/<str:token>/", api_views.info_subida, name="info-subida"),
     path("subida/<str:token>/documento/", api_views.subir_documento_token, name="subir-documento-token"),
     path("subida/<str:token>/finalizar/", api_views.finalizar_subida, name="finalizar-subida"),

@@ -6,3 +6,4 @@ decoradores @admin.register de cada uno al cargar la app.
 """
 from . import vehiculo  # noqa: F401
 from . import reserva  # noqa: F401
+from . import telemetria  # noqa: F401

@@ -13,6 +13,7 @@ from .vehiculo import (
     TemporadaPrecio,
     Vehiculo,
 )
+from .telemetria import Dispositivo, Posicion
 from .reserva import (
     Cancelacion,
     Cliente,
@@ -46,4 +47,7 @@ __all__ = [
     "Factura",
     "Cancelacion",
     "ContratoReserva",
+    # telemetria
+    "Dispositivo",
+    "Posicion",
 ]

@@ -195,6 +195,9 @@ DOCUMENTS_ROOT = os.getenv("DOCUMENTS_ROOT", str(BASE_DIR / "documents"))
 # enlace mágico de subida de documentos). Sin barra final.
 SITE_URL = os.getenv("SITE_URL", "https://autorent.automaworks.es").rstrip("/")
 
+# Token compartido para la ingesta de telemetría GPS (simulador / receptor).
+GPS_INGEST_TOKEN = os.getenv("GPS_INGEST_TOKEN", "")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
@@ -252,8 +255,6 @@ JAZZMIN_SETTINGS = {
         # core
         "core.SiteConfig": "fas fa-building",
         "core.EmailConfig": "fas fa-envelope",
-        "core.FrontendConfig": "fas fa-palette",
-        "core.Sede": "fas fa-map-marker-alt",
         # django_celery_beat
         "django_celery_beat.PeriodicTask": "fas fa-tasks",
         "django_celery_beat.IntervalSchedule": "fas fa-hourglass-half",
