@@ -22,7 +22,7 @@ NETWORK="autorent_net"
 
 # Contenedores que deben estar en la red (los que hablan entre sí).
 # frontend y api no la necesitan; añádelos aquí si en el futuro sí.
-CONTAINERS="autorent-redis autorent-backend autorent-celery autorent-celery-beat"
+CONTAINERS="autorent-redis autorent-backend autorent-celery autorent-celery-beat autorent-api"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
