@@ -219,6 +219,17 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "Panel de gestión AutoRent",
     "copyright": "AutomaWorks",
     "search_model": ["autorent.Reserva", "autorent.Cliente", "autorent.Vehiculo"],
+    # Enlaces personalizados en el menú lateral (por app).
+    "custom_links": {
+        "autorent": [
+            {
+                "name": "Dashboard de flota",
+                "url": "dashboard-flota",
+                "icon": "fas fa-map-location-dot",
+                "permissions": ["autorent.view_dispositivo"],
+            },
+        ],
+    },
     # Orden de las apps en el menú lateral.
     "order_with_respect_to": [
         "autorent",
@@ -252,6 +263,8 @@ JAZZMIN_SETTINGS = {
         "autorent.Pago": "fas fa-credit-card",
         "autorent.Factura": "fas fa-file-invoice",
         "autorent.Cancelacion": "fas fa-ban",
+        "autorent.Dispositivo": "fas fa-satellite-dish",
+        "autorent.Posicion": "fas fa-location-dot",
         # core
         "core.SiteConfig": "fas fa-building",
         "core.EmailConfig": "fas fa-envelope",

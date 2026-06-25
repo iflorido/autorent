@@ -12,7 +12,10 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from autorent.admin_dashboard import dashboard_flota
+
 urlpatterns = [
+    path("admin/flota/", dashboard_flota, name="dashboard-flota"),
     path("admin/", admin.site.urls),
     path("api/", include("core.urls")),
     path("api/", include("autorent.urls")),

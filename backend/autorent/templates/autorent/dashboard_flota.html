@@ -1,0 +1,162 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #flota-wrap { display: flex; gap: 16px; height: calc(100vh - 200px); min-height: 480px; }
+  #flota-lista {
+    width: 320px; overflow-y: auto; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 8px;
+  }
+  #flota-mapa { flex: 1; border-radius: 10px; border: 1px solid #e2e8f0; }
+  .veh-item {
+    padding: 10px 12px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
+    margin-bottom: 6px;
+  }
+  .veh-item:hover { background: #f1f5f9; }
+  .veh-item.activo { border-color: #0891b2; background: #ecfeff; }
+  .veh-nombre { font-weight: 600; font-size: 14px; }
+  .veh-meta { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.on { background: #dcfce7; color: #166534; }
+  .badge.off { background: #fee2e2; color: #991b1b; }
+  .flota-toolbar { margin-bottom: 12px; display: flex; gap: 10px; align-items: center; }
+  .flota-toolbar button {
+    background: #0891b2; color: #fff; border: 0; padding: 7px 14px; border-radius: 8px;
+    cursor: pointer; font-weight: 600;
+  }
+  .veh-vel { font-variant-numeric: tabular-nums; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flota-toolbar">
+  <button id="btn-refrescar">Actualizar</button>
+  <label><input type="checkbox" id="chk-auto" checked> Auto-refresco (10s)</label>
+  <span id="flota-estado" style="color:#64748b;font-size:13px"></span>
+</div>
+
+<div id="flota-wrap">
+  <div id="flota-lista"><p style="color:#64748b;padding:10px">Cargando flota…</p></div>
+  <div id="flota-mapa"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  const API_FLOTA = "/api/gps/flota/";
+  const API_HIST = (id) => `/api/gps/vehiculo/${id}/historico/`;
+
+  let mapa, capaMarcadores, capaRuta;
+  let seleccionado = null;
+  let timer = null;
+
+  function initMapa() {
+    mapa = L.map("flota-mapa").setView([36.46, -6.19], 11);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "© OpenStreetMap",
+    }).addTo(mapa);
+    capaMarcadores = L.layerGroup().addTo(mapa);
+    capaRuta = L.layerGroup().addTo(mapa);
+  }
+
+  // Icono según estado (flecha orientada al rumbo si está en movimiento).
+  function iconoVehiculo(v) {
+    const color = v.online ? (v.posicion.movimiento ? "#0891b2" : "#64748b") : "#cbd5e1";
+    const rot = v.posicion.rumbo || 0;
+    return L.divIcon({
+      className: "",
+      html: `<div style="transform:rotate(${rot}deg);width:26px;height:26px">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="${color}" stroke="#fff" stroke-width="1.5">
+          <path d="M12 2l7 18-7-4-7 4z"/></svg></div>`,
+      iconSize: [26, 26], iconAnchor: [13, 13],
+    });
+  }
+
+  async function cargarFlota() {
+    const est = document.getElementById("flota-estado");
+    try {
+      const r = await fetch(API_FLOTA, { headers: { "Accept": "application/json" } });
+      if (!r.ok) throw new Error(r.status);
+      const data = await r.json();
+      pintarFlota(data.vehiculos || []);
+      est.textContent = "Actualizado " + new Date().toLocaleTimeString();
+    } catch (e) {
+      est.textContent = "Error al cargar (" + e.message + ")";
+    }
+  }
+
+  function pintarFlota(vehiculos) {
+    capaMarcadores.clearLayers();
+    const lista = document.getElementById("flota-lista");
+    lista.innerHTML = "";
+
+    if (!vehiculos.length) {
+      lista.innerHTML = '<p style="color:#64748b;padding:10px">No hay vehículos con telemetría.</p>';
+      return;
+    }
+
+    const bounds = [];
+    vehiculos.forEach((v) => {
+      const p = v.posicion;
+      const m = L.marker([p.lat, p.lon], { icon: iconoVehiculo(v) }).addTo(capaMarcadores);
+      m.bindPopup(
+        `<strong>${v.vehiculo}</strong><br>${v.matricula}<br>` +
+        `${p.velocidad.toFixed(0)} km/h · ${p.ignicion ? "encendido" : "apagado"}<br>` +
+        (p.odometro != null ? `Odómetro: ${p.odometro.toLocaleString()} km<br>` : "") +
+        (p.nivel_combustible != null ? `Combustible: ${p.nivel_combustible}%` : "")
+      );
+      m.on("click", () => seleccionarVehiculo(v.vehiculo_id));
+      bounds.push([p.lat, p.lon]);
+
+      // Item de la lista.
+      const item = document.createElement("div");
+      item.className = "veh-item" + (v.vehiculo_id === seleccionado ? " activo" : "");
+      item.innerHTML =
+        `<div class="veh-nombre">${v.vehiculo} ` +
+        `<span class="badge ${v.online ? "on" : "off"}">${v.online ? "online" : "offline"}</span></div>` +
+        `<div class="veh-meta">${v.matricula} · <span class="veh-vel">${p.velocidad.toFixed(0)} km/h</span>` +
+        ` · ${p.ignicion ? "🟢 encendido" : "⚪ apagado"}</div>`;
+      item.onclick = () => { seleccionarVehiculo(v.vehiculo_id); mapa.setView([p.lat, p.lon], 14); };
+      lista.appendChild(item);
+    });
+
+    if (bounds.length && seleccionado === null) {
+      mapa.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    }
+  }
+
+  async function seleccionarVehiculo(id) {
+    seleccionado = id;
+    document.querySelectorAll(".veh-item").forEach((el) => el.classList.remove("activo"));
+    capaRuta.clearLayers();
+    try {
+      const r = await fetch(API_HIST(id));
+      if (!r.ok) return;
+      const data = await r.json();
+      const pts = (data.puntos || []).map((p) => [p.lat, p.lon]);
+      if (pts.length > 1) {
+        L.polyline(pts, { color: "#0891b2", weight: 4, opacity: 0.7 }).addTo(capaRuta);
+      }
+    } catch (e) { /* silencioso */ }
+    cargarFlota();
+  }
+
+  function setAuto(on) {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (on) timer = setInterval(cargarFlota, 10000);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initMapa();
+    cargarFlota();
+    setAuto(true);
+    document.getElementById("btn-refrescar").onclick = cargarFlota;
+    document.getElementById("chk-auto").onchange = (e) => setAuto(e.target.checked);
+  });
+})();
+</script>
+{% endblock %}
