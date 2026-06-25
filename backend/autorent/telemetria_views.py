@@ -113,8 +113,11 @@ def _serializar_posicion(pos):
         "ignicion": pos.ignicion,
         "movimiento": pos.movimiento,
         "rumbo": pos.rumbo,
+        "altitud": pos.altitud,
+        "satelites": pos.satelites,
         "odometro": pos.odometro,
         "nivel_combustible": pos.nivel_combustible,
+        "voltaje_bateria": pos.voltaje_bateria,
     }
 
 
@@ -124,7 +127,7 @@ def flota_estado(request):
     """Última posición conocida de cada vehículo con dispositivo.
 
     GET /api/gps/flota/
-    Para el mapa del dashboard: un punto por vehículo.
+    Para el mapa del dashboard: un punto por vehículo, con datos del vehículo.
     """
     salida = []
     dispositivos = (
@@ -137,12 +140,16 @@ def flota_estado(request):
             continue
         # Online si ha comunicado en los últimos 10 minutos.
         online = (timezone.now() - ultima.timestamp) < timedelta(minutes=10)
+        v = disp.vehiculo
         salida.append({
             "vehiculo_id": disp.vehiculo_id,
-            "vehiculo": disp.vehiculo.nombre,
-            "matricula": disp.vehiculo.matricula,
+            "vehiculo": v.nombre,
+            "matricula": v.matricula,
+            "categoria": v.get_categoria_display(),
             "imei": disp.imei,
+            "modelo_dispositivo": disp.get_modelo_display(),
             "online": online,
+            "ultima_comunicacion": ultima.timestamp.isoformat(),
             "posicion": _serializar_posicion(ultima),
         })
     return Response({"vehiculos": salida})
