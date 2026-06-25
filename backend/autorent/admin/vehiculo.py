@@ -9,6 +9,7 @@ from django.utils.html import format_html
 
 from ..models import (
     BloqueoFecha,
+    CategoriaVehiculo,
     Extra,
     FotoVehiculo,
     Mantenimiento,
@@ -56,11 +57,20 @@ class MantenimientoInline(admin.TabularInline):
 
 @admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "matricula", "categoria", "sede", "plazas", "km_actuales", "activo")
-    list_filter = ("categoria", "activo", "sede", "combustible", "cambio")
+    list_display = ("nombre", "matricula", "categoria_obj", "sede", "plazas", "km_actuales", "activo")
+    list_filter = ("categoria_obj", "activo", "sede", "combustible", "cambio")
     search_fields = ("nombre", "matricula", "marca", "modelo")
     prepopulated_fields = {"slug": ("nombre",)}
     filter_horizontal = ("extras",)
+    autocomplete_fields = ("categoria_obj",)
+
+    def save_model(self, request, obj, form, change):
+        # Mantener sincronizado el campo de texto 'categoria' (usado por el
+        # frontend y los filtros) con la categoría gestionable seleccionada.
+        if obj.categoria_obj:
+            obj.categoria = obj.categoria_obj.slug
+        super().save_model(request, obj, form, change)
+
     inlines = [
         FotoVehiculoInline,
         RangoPrecioInline,
@@ -70,7 +80,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     ]
     fieldsets = (
         ("Identificación", {
-            "fields": ("nombre", "slug", "matricula", "marca", "modelo", "anio", "categoria"),
+            "fields": ("nombre", "slug", "matricula", "marca", "modelo", "anio", "categoria_obj"),
         }),
         ("Características", {
             "fields": ("plazas", "puertas", "combustible", "cambio",
@@ -95,3 +105,12 @@ class MantenimientoAdmin(admin.ModelAdmin):
     list_filter = ("tipo", "fecha")
     search_fields = ("vehiculo__nombre", "vehiculo__matricula")
     date_hierarchy = "fecha"
+
+
+@admin.register(CategoriaVehiculo)
+class CategoriaVehiculoAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "slug", "limite_velocidad", "edad_min_conductor",
+                    "antiguedad_carnet_min", "orden")
+    list_editable = ("limite_velocidad", "edad_min_conductor", "antiguedad_carnet_min", "orden")
+    search_fields = ("nombre", "slug")
+    prepopulated_fields = {"slug": ("nombre",)}

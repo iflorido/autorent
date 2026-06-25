@@ -256,6 +256,7 @@ JAZZMIN_SETTINGS = {
         "auth.Group": "fas fa-users",
         # autorent
         "autorent.Vehiculo": "fas fa-car",
+        "autorent.CategoriaVehiculo": "fas fa-tags",
         "autorent.Extra": "fas fa-plus-circle",
         "autorent.Mantenimiento": "fas fa-wrench",
         "autorent.Cliente": "fas fa-id-card",

@@ -1,9 +1,59 @@
 """
-Paquete de configuración del admin de autorent.
+Paquete de modelos de autorent.
 
-Se importan los módulos por dominio para que Django ejecute los
-decoradores @admin.register de cada uno al cargar la app.
+Los modelos se organizan por dominio en módulos separados y se reexportan
+aquí para que Django los descubra como `autorent.<Modelo>`.
 """
-from . import vehiculo  # noqa: F401
-from . import reserva  # noqa: F401
-from . import telemetria  # noqa: F401
+from .vehiculo import (
+    BloqueoFecha,
+    CategoriaVehiculo,
+    Extra,
+    FotoVehiculo,
+    Mantenimiento,
+    RangoPrecio,
+    TemporadaPrecio,
+    Vehiculo,
+)
+from .telemetria import Dispositivo, Posicion
+from .flota import ReglaMantenimiento, EventoConduccion, Alerta
+from .reserva import (
+    Cancelacion,
+    Cliente,
+    ContratoReserva,
+    ConductorAdicional,
+    DocumentoReserva,
+    Factura,
+    Pago,
+    Reserva,
+    ReservaExtra,
+    TokenSubida,
+)
+
+__all__ = [
+    # vehiculo
+    "Vehiculo",
+    "CategoriaVehiculo",
+    "FotoVehiculo",
+    "RangoPrecio",
+    "TemporadaPrecio",
+    "Extra",
+    "BloqueoFecha",
+    "Mantenimiento",
+    # reserva
+    "Cliente",
+    "Reserva",
+    "ReservaExtra",
+    "ConductorAdicional",
+    "TokenSubida",
+    "DocumentoReserva",
+    "Pago",
+    "Factura",
+    "Cancelacion",
+    "ContratoReserva",
+    # telemetria
+    "Dispositivo",
+    "Posicion",
+    "ReglaMantenimiento",
+    "EventoConduccion",
+    "Alerta",
+]

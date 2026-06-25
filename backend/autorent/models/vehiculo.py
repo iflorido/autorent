@@ -13,6 +13,43 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 
+class CategoriaVehiculo(models.Model):
+    """Categoría de vehículo, gestionable desde el admin.
+
+    Define el límite de velocidad por defecto y los requisitos de conductor
+    (edad mínima y antigüedad de carnet) de los vehículos de esa categoría.
+    El 'slug' es el código estable que usa el frontend para filtrar el catálogo.
+    """
+    slug = models.SlugField(
+        max_length=40, unique=True, verbose_name="Código (slug)",
+        help_text="Identificador estable para el filtro del catálogo (ej: turismo).",
+    )
+    nombre = models.CharField(max_length=60, verbose_name="Nombre")
+    limite_velocidad = models.PositiveIntegerField(
+        default=120, verbose_name="Límite de velocidad por defecto (km/h)",
+        help_text="Se aplica a los vehículos de esta categoría que no tengan "
+                  "un límite propio.",
+    )
+    edad_min_conductor = models.PositiveIntegerField(
+        default=23, verbose_name="Edad mínima del conductor (años)",
+    )
+    antiguedad_carnet_min = models.PositiveIntegerField(
+        default=2, verbose_name="Antigüedad mínima de carnet (años)",
+    )
+    orden = models.PositiveIntegerField(
+        default=0, verbose_name="Orden",
+        help_text="Para ordenar las categorías en listados y filtros.",
+    )
+
+    class Meta:
+        verbose_name = "Categoría de vehículo"
+        verbose_name_plural = "Categorías de vehículo"
+        ordering = ["orden", "nombre"]
+
+    def __str__(self):
+        return self.nombre
+
+
 class Vehiculo(models.Model):
     class Categoria(models.TextChoices):
         TURISMO = "turismo", "Turismo"
@@ -44,9 +81,15 @@ class Vehiculo(models.Model):
     marca = models.CharField(max_length=60, verbose_name="Marca")
     modelo = models.CharField(max_length=60, verbose_name="Modelo")
     anio = models.PositiveIntegerField(blank=True, null=True, verbose_name="Año")
+    # Categoría como texto (compatibilidad con frontend y filtros existentes).
     categoria = models.CharField(
         max_length=20, choices=Categoria.choices,
         default=Categoria.FURGONETA, verbose_name="Categoría",
+    )
+    # Categoría como modelo gestionable (fuente de límites y requisitos).
+    categoria_obj = models.ForeignKey(
+        CategoriaVehiculo, on_delete=models.SET_NULL, blank=True, null=True,
+        related_name="vehiculos", verbose_name="Categoría (gestionable)",
     )
 
     # --- Características (para la ficha del frontend) ---
@@ -115,6 +158,21 @@ class Vehiculo(models.Model):
                 slug = f"{base}-{n}"
                 n += 1
             self.slug = slug
+
+        # Mantener coherentes los dos campos de categoría:
+        #  - si hay categoría gestionable, el texto refleja su slug.
+        #  - si solo hay texto, intenta enlazar la categoría gestionable por slug.
+        if self.categoria_obj:
+            self.categoria = self.categoria_obj.slug
+        elif self.categoria:
+            try:
+                from .vehiculo import CategoriaVehiculo
+                self.categoria_obj = CategoriaVehiculo.objects.filter(
+                    slug=self.categoria
+                ).first()
+            except Exception:  # noqa: BLE001
+                pass
+
         super().save(*args, **kwargs)
 
     @property
@@ -220,16 +278,19 @@ class Vehiculo(models.Model):
     def requisitos_conductor(self):
         """Edad mínima y antigüedad de carnet (años) según la categoría.
 
-        Turismos: 21 años y 2 de antigüedad.
-        Furgonetas, campers e industriales: 23 años y 2 de antigüedad.
-        (Según las Condiciones Generales de Contratación.)
+        Usa la categoría gestionable (categoria_obj) si está definida; si no,
+        cae en los valores por defecto históricos (turismo 21, resto 23).
         """
+        if self.categoria_obj:
+            return {
+                "edad_min": self.categoria_obj.edad_min_conductor,
+                "antiguedad_min": self.categoria_obj.antiguedad_carnet_min,
+            }
         if self.categoria == self.Categoria.TURISMO:
             return {"edad_min": 21, "antiguedad_min": 2}
         return {"edad_min": 23, "antiguedad_min": 2}
 
-    # Límites de velocidad por defecto según categoría (km/h, vías interurbanas
-    # en España). Se usan cuando el vehículo no tiene un límite propio.
+    # Límites por defecto históricos (fallback si no hay categoría gestionable).
     LIMITES_CATEGORIA = {
         Categoria.TURISMO: 120,
         Categoria.CAMPER: 100,
@@ -241,11 +302,13 @@ class Vehiculo(models.Model):
     def limite_velocidad_efectivo(self, defecto_global=120):
         """Límite de velocidad aplicable a este vehículo.
 
-        Prioridad: límite propio del vehículo -> límite de su categoría ->
-        valor global por defecto.
+        Prioridad: límite propio del vehículo -> límite de su categoría
+        gestionable -> límite por defecto histórico de la categoría -> global.
         """
         if self.limite_velocidad:
             return self.limite_velocidad
+        if self.categoria_obj:
+            return self.categoria_obj.limite_velocidad
         return self.LIMITES_CATEGORIA.get(self.categoria, defecto_global)
 
     @staticmethod
