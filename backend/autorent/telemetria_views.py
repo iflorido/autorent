@@ -101,6 +101,10 @@ def ingesta_telemetria(request):
     dispositivo.ultima_comunicacion = ts
     dispositivo.save(update_fields=["ultima_comunicacion"])
 
+    # Analizar para driver score, exceso de velocidad y mantenimiento.
+    from .flota_logica import procesar_telemetria
+    procesar_telemetria(pos)
+
     return Response({"ok": True, "id": pos.id}, status=status.HTTP_201_CREATED)
 
 
@@ -187,4 +191,76 @@ def vehiculo_historico(request, vehiculo_id):
     return Response({
         "vehiculo_id": vehiculo_id,
         "puntos": [_serializar_posicion(p) for p in qs],
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def alertas_activas(request):
+    """Alertas no leídas, para el panel del dashboard.
+
+    GET /api/gps/alertas/
+    """
+    from .models import Alerta
+    qs = Alerta.objects.filter(leida=False).select_related("vehiculo")[:50]
+    salida = [{
+        "id": a.id,
+        "tipo": a.tipo,
+        "tipo_display": a.get_tipo_display(),
+        "vehiculo": a.vehiculo.nombre,
+        "matricula": a.vehiculo.matricula,
+        "mensaje": a.mensaje,
+        "fecha": a.created_at.isoformat(),
+    } for a in qs]
+    return Response({"alertas": salida, "total": len(salida)})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def alerta_marcar_leida(request, alerta_id):
+    """Marca una alerta como atendida. POST /api/gps/alertas/<id>/leer/"""
+    from .models import Alerta
+    try:
+        a = Alerta.objects.get(pk=alerta_id)
+    except Alerta.DoesNotExist:
+        return Response({"detail": "No existe."}, status=status.HTTP_404_NOT_FOUND)
+    a.leida = True
+    a.save(update_fields=["leida"])
+    return Response({"ok": True})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def driver_score(request, vehiculo_id):
+    """Driver score de un vehículo (acumulado 30 días y de la reserva activa).
+
+    GET /api/gps/vehiculo/<id>/score/
+    """
+    from .models import Vehiculo, Reserva
+    from .flota_logica import calcular_driver_score
+    try:
+        vehiculo = Vehiculo.objects.get(pk=vehiculo_id)
+    except Vehiculo.DoesNotExist:
+        return Response({"detail": "No existe."}, status=status.HTTP_404_NOT_FOUND)
+
+    acumulado = calcular_driver_score(vehiculo, dias=30)
+
+    # Score de la reserva activa (quién lo lleva ahora), si la hay.
+    reserva = (
+        Reserva.objects.filter(vehiculo=vehiculo, estado=Reserva.Estado.ACTIVA)
+        .select_related("cliente").first()
+    )
+    por_reserva = None
+    if reserva:
+        sc = calcular_driver_score(vehiculo, reserva=reserva)
+        por_reserva = {
+            "localizador": reserva.localizador,
+            "cliente": reserva.cliente.nombre_completo,
+            **sc,
+        }
+
+    return Response({
+        "vehiculo_id": vehiculo_id,
+        "acumulado_30d": acumulado,
+        "reserva_activa": por_reserva,
     })

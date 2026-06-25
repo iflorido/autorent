@@ -20,3 +20,35 @@ class PosicionAdmin(admin.ModelAdmin):
     search_fields = ("dispositivo__imei",)
     readonly_fields = ("recibido_at",)
     date_hierarchy = "timestamp"
+
+
+from ..models import ReglaMantenimiento, EventoConduccion, Alerta
+
+
+@admin.register(ReglaMantenimiento)
+class ReglaMantenimientoAdmin(admin.ModelAdmin):
+    list_display = ("tipo", "vehiculo", "cada_km", "km_proximo", "fecha_proxima", "activa")
+    list_filter = ("tipo", "activa")
+    search_fields = ("vehiculo__matricula", "vehiculo__nombre")
+    autocomplete_fields = ("vehiculo",)
+
+
+@admin.register(EventoConduccion)
+class EventoConduccionAdmin(admin.ModelAdmin):
+    list_display = ("tipo", "vehiculo", "severidad", "velocidad", "timestamp", "reserva")
+    list_filter = ("tipo",)
+    search_fields = ("vehiculo__matricula",)
+    date_hierarchy = "timestamp"
+
+
+@admin.register(Alerta)
+class AlertaAdmin(admin.ModelAdmin):
+    list_display = ("tipo", "vehiculo", "mensaje", "leida", "created_at")
+    list_filter = ("tipo", "leida")
+    search_fields = ("vehiculo__matricula", "mensaje")
+    actions = ["marcar_leidas"]
+
+    @admin.action(description="Marcar como leídas")
+    def marcar_leidas(self, request, queryset):
+        n = queryset.update(leida=True)
+        self.message_user(request, f"{n} alerta(s) marcada(s) como leídas.")

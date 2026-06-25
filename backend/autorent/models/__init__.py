@@ -14,6 +14,7 @@ from .vehiculo import (
     Vehiculo,
 )
 from .telemetria import Dispositivo, Posicion
+from .flota import ReglaMantenimiento, EventoConduccion, Alerta
 from .reserva import (
     Cancelacion,
     Cliente,
@@ -50,4 +51,7 @@ __all__ = [
     # telemetria
     "Dispositivo",
     "Posicion",
+    "ReglaMantenimiento",
+    "EventoConduccion",
+    "Alerta",
 ]

@@ -84,6 +84,22 @@
 
         .flota-status { padding: 8px; text-align: center; font-size: 0.75rem; color: #64748b; background: #f8f9fa; border-top: 1px solid #eee; }
 
+        #panel-avisos.hidden { display: none; }
+        .alert-item {
+            padding: 9px 11px; border-bottom: 1px solid #f1f1f1; font-size: 0.82rem;
+            border-left: 4px solid #dc3545; margin-bottom: 5px; background: #fff; border-radius: 4px;
+        }
+        .alert-item.mantenimiento { border-left-color: #f59e0b; }
+        .alert-item.velocidad { border-left-color: #dc3545; }
+        .alert-item.conduccion { border-left-color: #8b5cf6; }
+        .alert-top { display: flex; justify-content: space-between; font-weight: 600; }
+        .alert-msg { color: #475569; font-size: 0.78rem; margin-top: 2px; }
+
+        .score-box { padding: 12px 14px; text-align: center; border-bottom: 1px solid #f3f4f6; }
+        .score-num { font-size: 2rem; font-weight: 700; line-height: 1; }
+        .score-label { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+        .score-buena { color: #16a34a; } .score-media { color: #f59e0b; } .score-mala { color: #dc3545; }
+
         @media (max-width: 768px) {
             .map-overlays { width: calc(100% - 20px); left: 10px; right: 10px; }
         }
@@ -93,6 +109,17 @@
 {% block content %}
 <div id="map-container">
     <div class="map-overlays">
+
+        <!-- Panel de alertas (rojo) -->
+        <div id="panel-avisos" class="map-panel hidden">
+            <div class="panel-header" style="background:#dc3545;color:#fff" onclick="togglePanel('panel-avisos')">
+                <span><i class="fas fa-triangle-exclamation me-2"></i> Alertas (<span id="alert-count">0</span>)</span>
+                <i class="fas fa-chevron-down toggle-icon"></i>
+            </div>
+            <div class="panel-body">
+                <div id="lista-avisos" style="padding:6px"></div>
+            </div>
+        </div>
 
         <!-- Panel detalle del vehículo seleccionado -->
         <div id="panel-detalle" class="map-panel hidden">
@@ -243,6 +270,7 @@
         document.getElementById('detalle-titulo').innerText = v.vehiculo;
         const fechaCom = new Date(v.ultima_comunicacion).toLocaleString();
         document.getElementById('detalle-contenido').innerHTML = `
+            <div id="score-zona" class="score-box"><span class="score-label">Cargando score…</span></div>
             <div class="detalle-fila"><span class="etq">Matrícula</span><span class="val">${v.matricula}</span></div>
             <div class="detalle-fila"><span class="etq">Categoría</span><span class="val">${v.categoria}</span></div>
             <div class="detalle-fila"><span class="etq">Estado</span><span class="val">${v.online ? '🟢 Online' : '⚪ Offline'}</span></div>
@@ -257,6 +285,7 @@
             <div class="detalle-fila"><span class="etq">IMEI</span><span class="val" style="font-size:.75rem">${v.imei}</span></div>
             <div class="detalle-fila"><span class="etq">Última señal</span><span class="val" style="font-size:.72rem">${fechaCom}</span></div>
         `;
+        cargarScore(id);
         const panelDet = document.getElementById('panel-detalle');
         panelDet.classList.remove('hidden');
         panelDet.classList.add('is-open');
@@ -283,11 +312,61 @@
         pintarFlota(ultimaFlota);
     }
 
+    async function cargarScore(id) {
+        try {
+            const r = await fetch(`/api/gps/vehiculo/${id}/score/`);
+            if (!r.ok) return;
+            const d = await r.json();
+            const zona = document.getElementById('score-zona');
+            if (!zona) return;
+            const s = d.acumulado_30d.score;
+            const clase = s >= 80 ? 'score-buena' : (s >= 60 ? 'score-media' : 'score-mala');
+            let html = `<div class="score-num ${clase}">${s}</div>` +
+                       `<div class="score-label">Driver score (30 días · ${d.acumulado_30d.eventos_total} eventos)</div>`;
+            if (d.reserva_activa) {
+                const sr = d.reserva_activa.score;
+                const cr = sr >= 80 ? 'score-buena' : (sr >= 60 ? 'score-media' : 'score-mala');
+                html += `<div style="margin-top:8px;font-size:.8rem">Reserva activa: ` +
+                        `<strong class="${cr}">${sr}</strong> · ${d.reserva_activa.cliente}</div>`;
+            }
+            zona.innerHTML = html;
+        } catch (e) { /* silencioso */ }
+    }
+
     async function cicloRefresco() {
         await cargarFlota();
+        await cargarAlertas();
         let seg = 10;
         document.getElementById('status-refresco').innerText = `Próxima actualización en ${seg}s`;
         setTimeout(cicloRefresco, seg * 1000);
+    }
+
+    async function cargarAlertas() {
+        try {
+            const r = await fetch('/api/gps/alertas/');
+            if (!r.ok) return;
+            const data = await r.json();
+            const panel = document.getElementById('panel-avisos');
+            const lista = document.getElementById('lista-avisos');
+            document.getElementById('alert-count').innerText = data.total;
+            lista.innerHTML = '';
+            if (data.total > 0) {
+                panel.classList.remove('hidden');
+                if (window.innerWidth > 768) panel.classList.add('is-open');
+                data.alertas.forEach(a => {
+                    const div = document.createElement('div');
+                    div.className = 'alert-item ' + a.tipo;
+                    const hora = new Date(a.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    div.innerHTML =
+                        `<div class="alert-top"><span>${a.matricula} · ${a.tipo_display}</span>` +
+                        `<span style="color:#94a3b8;font-weight:400">${hora}</span></div>` +
+                        `<div class="alert-msg">${a.mensaje}</div>`;
+                    lista.appendChild(div);
+                });
+            } else {
+                panel.classList.add('hidden');
+            }
+        } catch (e) { /* silencioso */ }
     }
 </script>
 {% endblock %}
