@@ -17,6 +17,7 @@ interface Props {
   ruta?: (n: number) => string;  // construye la URL de cada frame
   alturaScroll?: number;      // múltiplo de la altura de ventana que dura la animación
   children?: React.ReactNode; // contenido superpuesto (título, etc.)
+  buscador?: React.ReactNode; // buscador flotante en el borde inferior
 }
 
 function rutaPorDefecto(n: number) {
@@ -30,6 +31,7 @@ export default function HeroScrollFrames({
   ruta = rutaPorDefecto,
   alturaScroll = 3,
   children,
+  buscador,
 }: Props) {
   const total = ultimoFrame - primerFrame + 1;
   const seccionRef = useRef<HTMLDivElement>(null);
@@ -54,7 +56,8 @@ export default function HeroScrollFrames({
     imagenesRef.current = imgs;
   }, [primerFrame, total, ruta]);
 
-  // Dibujar un frame concreto en el canvas, cubriendo el lienzo (object-fit: cover).
+  // Dibujar un frame concreto en el canvas, completo dentro del lienzo
+  // (object-fit: contain): la imagen se ve entera, adaptada al ancho, sin recortar.
   function dibujar(indice: number) {
     const canvas = canvasRef.current;
     const img = imagenesRef.current[indice];
@@ -62,15 +65,17 @@ export default function HeroScrollFrames({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const cw = canvas.width;
-    const ch = canvas.height;
+    const cw = canvas.clientWidth;
+    const ch = canvas.clientHeight;
     const ir = img.naturalWidth / img.naturalHeight;
     const cr = cw / ch;
-    let dw = cw, dh = ch, dx = 0, dy = 0;
+    let dw, dh, dx, dy;
     if (ir > cr) {
-      dh = ch; dw = ch * ir; dx = (cw - dw) / 2;
+      // La imagen es más ancha: ajustar al ancho.
+      dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2;
     } else {
-      dw = cw; dh = cw / ir; dy = (ch - dh) / 2;
+      // La imagen es más alta: ajustar al alto.
+      dh = ch; dw = ch * ir; dy = 0; dx = (cw - dw) / 2;
     }
     ctx.clearRect(0, 0, cw, ch);
     ctx.drawImage(img, dx, dy, dw, dh);
@@ -145,9 +150,17 @@ export default function HeroScrollFrames({
             style={{ backgroundImage: "url('/images/hero.jpg')" }}
           />
         )}
-        {/* Contenido superpuesto (título, etc.) */}
-        <div className="relative h-full flex items-center">
-          <div className="max-w-container mx-auto px-6 w-full">{children}</div>
+
+        {/* Texto del hero + buscador (dentro del área visible, como antes) */}
+        <div className="relative h-full flex flex-col justify-center">
+          <div className="max-w-container mx-auto px-6 w-full">
+            {children}
+          </div>
+          {buscador && (
+            <div className="max-w-container mx-auto px-6 w-full mt-8 md:mt-12">
+              {buscador}
+            </div>
+          )}
         </div>
       </div>
     </section>

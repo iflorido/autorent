@@ -36,7 +36,12 @@ export default function Home() {
   return (
     <div>
       {/* Hero con animación scroll-driven (secuencia de frames) */}
-      <HeroScrollFrames primerFrame={30} ultimoFrame={65} alturaScroll={3}>
+      <HeroScrollFrames
+        primerFrame={30}
+        ultimoFrame={65}
+        alturaScroll={3}
+        buscador={<Buscador />}
+      >
         <div className="max-w-xl">
           <h1 className="text-white text-4xl md:text-6xl font-medium leading-[1.1]">
             Tu próxima aventura sobre ruedas
@@ -46,13 +51,6 @@ export default function Home() {
           </p>
         </div>
       </HeroScrollFrames>
-
-      {/* Buscador justo después de la animación */}
-      <section className="max-w-container mx-auto px-6 -mt-16 md:-mt-20 relative z-[20]">
-        <FadeIn>
-          <Buscador />
-        </FadeIn>
-      </section>
 
       {/* Carrusel de vehículos */}
       <section className="max-w-container mx-auto px-6 pt-12 md:pt-16 pb-8">
