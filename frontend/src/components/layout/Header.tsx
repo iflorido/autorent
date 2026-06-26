@@ -15,11 +15,18 @@ export default function Header() {
   const [megaOpen, setMegaOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [categorias, setCategorias] = useState<CategoriaItem[]>([]);
+  const [movilOpen, setMovilOpen] = useState(false);
 
   // Categorías dinámicas (las que existan en el admin con vehículos).
   useEffect(() => {
     getCategorias().then(setCategorias).catch(() => setCategorias([]));
   }, []);
+
+  // Bloquear el scroll del fondo cuando el menú móvil está abierto.
+  useEffect(() => {
+    document.body.style.overflow = movilOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [movilOpen]);
 
   // El header es transparente solo si la página tiene hero oscuro detrás.
   const tieneHero = tieneHeroOscuro;
@@ -31,8 +38,9 @@ export default function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Sólido si: no hay hero, o se ha hecho scroll, o el megamenú está abierto.
-  const solido = !tieneHero || scrolled || megaOpen;
+  // Sólido si: no hay hero, o se ha hecho scroll, o el megamenú está abierto,
+  // o el menú móvil está abierto.
+  const solido = !tieneHero || scrolled || megaOpen || movilOpen;
 
   return (
     <header
@@ -57,9 +65,9 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Navegación a la izquierda, junto al logo */}
+        {/* Navegación de escritorio (oculta en móvil) */}
         <nav
-          className="flex items-center gap-6 text-sm transition-colors"
+          className="hidden md:flex items-center gap-6 text-sm transition-colors"
           style={{ color: solido ? "var(--text)" : "rgba(255,255,255,0.92)" }}
         >
           <div
@@ -138,7 +146,7 @@ export default function Header() {
           <a
             href="/admin/"
             title="Administración"
-            className="w-9 h-9 rounded-full flex items-center justify-center transition"
+            className="hidden md:flex w-9 h-9 rounded-full items-center justify-center transition"
             style={{
               color: solido ? "var(--text)" : "#fff",
               background: solido ? "var(--surface-2)" : "rgba(255,255,255,0.15)",
@@ -149,8 +157,75 @@ export default function Header() {
               <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
             </svg>
           </a>
+
+          {/* Botón hamburguesa (solo móvil) */}
+          <button
+            onClick={() => setMovilOpen((v) => !v)}
+            aria-label="Menú"
+            className="md:hidden w-10 h-10 rounded-lg flex items-center justify-center transition"
+            style={{
+              color: solido ? "var(--text)" : "#fff",
+              background: solido ? "var(--surface-2)" : "rgba(255,255,255,0.15)",
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {movilOpen ? (
+                <path d="M6 6l12 12M18 6L6 18" />
+              ) : (
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              )}
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* Panel de menú móvil desplegable */}
+      {movilOpen && (
+        <div
+          className="md:hidden border-t overflow-y-auto"
+          style={{
+            background: "var(--bg-2)",
+            borderColor: "var(--border)",
+            maxHeight: "calc(100vh - 4rem)",
+          }}
+        >
+          <nav className="px-6 py-4 flex flex-col">
+            <Link to="/modelos" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">Modelos</Link>
+            <Link to="/tarifas" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">Tarifas</Link>
+            <Link to="/extras" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">Extras</Link>
+            <Link to="/localizaciones" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">Localizaciones</Link>
+            <Link to="/faq" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">FAQ</Link>
+            <Link to="/stack" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">Stack</Link>
+            <Link to="/contacto" onClick={() => setMovilOpen(false)} className="py-3 text-text border-b border-border font-medium">Contacto</Link>
+
+            {/* Categorías (dinámicas) */}
+            {categorias.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs uppercase tracking-wide text-text-2 mb-2">Por categoría</p>
+                <div className="flex flex-wrap gap-2">
+                  {categorias.map((c) => (
+                    <Link
+                      key={c.slug}
+                      to={`/modelos?categoria=${c.slug}`}
+                      onClick={() => setMovilOpen(false)}
+                      className="px-3 py-1.5 rounded-lg text-sm bg-accent-dim text-text"
+                    >
+                      {c.nombre}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <a
+              href="/admin/"
+              className="mt-5 py-3 text-center rounded-lg bg-accent text-white font-medium"
+            >
+              Administración
+            </a>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
