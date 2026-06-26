@@ -56,8 +56,9 @@ export default function HeroScrollFrames({
     imagenesRef.current = imgs;
   }, [primerFrame, total, ruta]);
 
-  // Dibujar un frame concreto en el canvas, completo dentro del lienzo
-  // (object-fit: contain): la imagen se ve entera, adaptada al ancho, sin recortar.
+  // Dibujar un frame: ajustado al ANCHO de la ventana y pegado ARRIBA.
+  // La altura resulta proporcional; si la ventana fuera más alta que la imagen,
+  // quedaría fondo abajo (caso raro y aceptado por preferencia de diseño).
   function dibujar(indice: number) {
     const canvas = canvasRef.current;
     const img = imagenesRef.current[indice];
@@ -68,15 +69,11 @@ export default function HeroScrollFrames({
     const cw = canvas.clientWidth;
     const ch = canvas.clientHeight;
     const ir = img.naturalWidth / img.naturalHeight;
-    const cr = cw / ch;
-    let dw, dh, dx, dy;
-    if (ir > cr) {
-      // La imagen es más ancha: ajustar al ancho.
-      dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2;
-    } else {
-      // La imagen es más alta: ajustar al alto.
-      dh = ch; dw = ch * ir; dy = 0; dx = (cw - dw) / 2;
-    }
+    // Siempre ancho completo; alto proporcional, anclado arriba (dy = 0).
+    const dw = cw;
+    const dh = cw / ir;
+    const dx = 0;
+    const dy = 0;
     ctx.clearRect(0, 0, cw, ch);
     ctx.drawImage(img, dx, dy, dw, dh);
   }
@@ -132,7 +129,7 @@ export default function HeroScrollFrames({
   return (
     <section
       ref={seccionRef}
-      className="relative"
+      className="relative z-20"
       style={{ height: `${alturaScroll * 100}vh` }}
     >
       {/* Lienzo anclado que ocupa la ventana mientras dura el scroll. */}
