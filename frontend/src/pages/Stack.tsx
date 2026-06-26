@@ -95,18 +95,126 @@ const MODULOS = [
   },
 ];
 
-function Hueco({ alto = "h-64", etiqueta = "Imagen" }: { alto?: string; etiqueta?: string }) {
+/* Diagrama de arquitectura: navegador -> proxy -> servicios -> datos. */
+function DiagramaArquitectura() {
+  return (
+    <div className="w-full rounded-2xl border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+      <svg viewBox="0 0 460 360" className="w-full h-auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama de arquitectura">
+        <defs>
+          <marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0 0L6 3L0 6Z" fill="var(--accent)" />
+          </marker>
+        </defs>
+
+        {/* Cliente */}
+        <g>
+          <rect x="170" y="14" width="120" height="40" rx="9" fill="var(--accent)" />
+          <text x="230" y="39" textAnchor="middle" fontSize="13" fontWeight="600" fill="#fff">Navegador / Cliente</text>
+        </g>
+        <line x1="230" y1="54" x2="230" y2="78" stroke="var(--accent)" strokeWidth="2" markerEnd="url(#ar)" />
+
+        {/* Proxy */}
+        <g>
+          <rect x="150" y="80" width="160" height="40" rx="9" fill="var(--accent-dim)" stroke="var(--accent)" strokeWidth="1.2" />
+          <text x="230" y="99" textAnchor="middle" fontSize="12.5" fontWeight="600" fill="var(--text)">Nginx / Plesk</text>
+          <text x="230" y="113" textAnchor="middle" fontSize="9.5" fill="var(--text-2)">proxy inverso · un dominio</text>
+        </g>
+
+        {/* Tres servicios desde el proxy */}
+        {/* Conexiones */}
+        <line x1="180" y1="120" x2="90" y2="158" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+        <line x1="230" y1="120" x2="230" y2="158" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+        <line x1="280" y1="120" x2="370" y2="158" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+
+        {/* frontend */}
+        <g>
+          <rect x="22" y="160" width="130" height="46" rx="9" fill="var(--bg)" stroke="var(--border)" />
+          <text x="87" y="180" textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--text)">frontend</text>
+          <text x="87" y="195" textAnchor="middle" fontSize="9" fill="var(--text-2)">React · /</text>
+        </g>
+        {/* backend */}
+        <g>
+          <rect x="165" y="160" width="130" height="46" rx="9" fill="var(--bg)" stroke="var(--border)" />
+          <text x="230" y="180" textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--text)">backend</text>
+          <text x="230" y="195" textAnchor="middle" fontSize="9" fill="var(--text-2)">Django · /api /admin</text>
+        </g>
+        {/* api */}
+        <g>
+          <rect x="308" y="160" width="130" height="46" rx="9" fill="var(--bg)" stroke="var(--border)" />
+          <text x="373" y="180" textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--text)">api</text>
+          <text x="373" y="195" textAnchor="middle" fontSize="9" fill="var(--text-2)">FastAPI · /gps</text>
+        </g>
+
+        {/* Worker + beat (segunda fila, ligados por redis) */}
+        <line x1="230" y1="206" x2="230" y2="230" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+        <line x1="373" y1="206" x2="270" y2="230" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+        <g>
+          <rect x="160" y="232" width="150" height="40" rx="9" fill="var(--accent-dim)" stroke="var(--accent)" strokeWidth="1.1" />
+          <text x="235" y="251" textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--text)">redis</text>
+          <text x="235" y="264" textAnchor="middle" fontSize="9" fill="var(--text-2)">broker de mensajes</text>
+        </g>
+        <line x1="160" y1="252" x2="92" y2="288" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+        <line x1="235" y1="272" x2="235" y2="288" stroke="var(--accent)" strokeWidth="1.6" markerEnd="url(#ar)" />
+        <g>
+          <rect x="22" y="290" width="135" height="42" rx="9" fill="var(--bg)" stroke="var(--border)" />
+          <text x="89" y="310" textAnchor="middle" fontSize="10.5" fontWeight="600" fill="var(--text)">celery</text>
+          <text x="89" y="323" textAnchor="middle" fontSize="8.5" fill="var(--text-2)">worker · tareas</text>
+        </g>
+        <g>
+          <rect x="168" y="290" width="135" height="42" rx="9" fill="var(--bg)" stroke="var(--border)" />
+          <text x="235" y="310" textAnchor="middle" fontSize="10.5" fontWeight="600" fill="var(--text)">celery-beat</text>
+          <text x="235" y="323" textAnchor="middle" fontSize="8.5" fill="var(--text-2)">programador</text>
+        </g>
+
+        {/* PostgreSQL a la derecha, conectada a backend y api */}
+        <g>
+          <rect x="318" y="244" width="120" height="46" rx="9" fill="var(--accent)" />
+          <text x="378" y="264" textAnchor="middle" fontSize="11" fontWeight="600" fill="#fff">PostgreSQL</text>
+          <text x="378" y="278" textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,0.8)">datos compartidos</text>
+        </g>
+        <line x1="295" y1="183" x2="318" y2="250" stroke="var(--border-2)" strokeWidth="1.4" strokeDasharray="3 3" />
+        <line x1="400" y1="206" x2="385" y2="244" stroke="var(--border-2)" strokeWidth="1.4" strokeDasharray="3 3" />
+      </svg>
+    </div>
+  );
+}
+
+/* Diagrama de CI/CD (ancho): permite scroll horizontal dentro del marco. */
+function DiagramaCICD() {
   return (
     <div
-      className={`w-full ${alto} rounded-2xl border-2 border-dashed flex items-center justify-center`}
+      className="w-full rounded-2xl border overflow-x-auto"
       style={{ borderColor: "var(--border)", background: "var(--surface)" }}
     >
-      <span className="text-text-2 text-sm flex items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5L5 21" />
-        </svg>
-        {etiqueta}
-      </span>
+      <svg viewBox="0 0 900 200" width="900" className="h-56 max-w-none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flujo de integración y despliegue continuo">
+        <defs>
+          <marker id="ci" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+            <path d="M0 0L6 3L0 6Z" fill="var(--accent)" />
+          </marker>
+        </defs>
+
+        {[
+          { x: 20, t1: "git push", t2: "Cambio en el código", ic: "M6 3v12a3 3 0 003 3 M18 9a3 3 0 100-6 3 3 0 000 6z M6 6a3 3 0 100-3" },
+          { x: 195, t1: "GitHub Actions", t2: "Construye la imagen", ic: "M4 6h16v12H4z M4 10h16" },
+          { x: 370, t1: "Registro GHCR", t2: "Publica la imagen", ic: "M12 2l9 4.9V17L12 22 3 17V7z" },
+          { x: 545, t1: "Plesk", t2: "Recoge y recarga", ic: "M3 13l9-9 9 9 M5 11v9h14v-9" },
+          { x: 720, t1: "entrypoint", t2: "Migra y arranca", ic: "M5 3l14 9-14 9z" },
+        ].map((p, i) => (
+          <g key={i}>
+            <rect x={p.x} y="60" width="150" height="80" rx="12" fill="var(--bg)" stroke="var(--border)" />
+            <circle cx={p.x + 30} cy="90" r="15" fill="var(--accent-dim)" />
+            <svg x={p.x + 21} y="81" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.7">
+              <path d={p.ic} />
+            </svg>
+            <text x={p.x + 16} y="120" fontSize="12" fontWeight="600" fill="var(--text)">{p.t1}</text>
+            <text x={p.x + 16} y="134" fontSize="9.5" fill="var(--text-2)">{p.t2}</text>
+            {i < 4 && (
+              <line x1={p.x + 150} y1="100" x2={p.x + 175} y2="100" stroke="var(--accent)" strokeWidth="2" markerEnd="url(#ci)" />
+            )}
+          </g>
+        ))}
+        <text x="20" y="34" fontSize="13" fontWeight="600" fill="var(--text)">Despliegue continuo — de un push a producción sin intervención manual</text>
+      </svg>
     </div>
   );
 }
@@ -153,8 +261,8 @@ export default function Stack() {
                   y no compiten entre sí.
                 </p>
               </div>
-              {/* Hueco para el diagrama de arquitectura */}
-              <Hueco alto="h-80" etiqueta="Diagrama de arquitectura" />
+              {/* Diagrama de arquitectura */}
+              <DiagramaArquitectura />
             </div>
           </FadeIn>
         </div>
@@ -197,8 +305,13 @@ export default function Stack() {
         <div className="max-w-container mx-auto">
           <FadeIn>
             <div className="grid md:grid-cols-2 gap-12 items-center">
-              {/* Hueco para captura del dashboard de flota */}
-              <Hueco alto="h-80" etiqueta="Dashboard de flota (mapa en vivo)" />
+              {/* Captura del dashboard de flota (sube la imagen a public/images/) */}
+              <img
+                src="/images/dashboard-flota.jpg"
+                alt="Dashboard de flota con mapa en tiempo real"
+                className="w-full h-80 object-cover rounded-2xl border shadow-soft"
+                style={{ borderColor: "var(--border)" }}
+              />
               <div>
                 <p className="text-accent font-medium tracking-widest text-xs uppercase mb-3">El diferenciador</p>
                 <h2 className="font-display text-3xl font-semibold mb-5">Telemetría en tiempo real de la flota</h2>
@@ -287,8 +400,8 @@ export default function Stack() {
                   esquema esté siempre sincronizado con el código en producción.
                 </p>
               </div>
-              {/* Hueco para diagrama de CI/CD */}
-              <Hueco alto="h-64" etiqueta="Flujo CI/CD" />
+              {/* Diagrama de CI/CD (ancho, con scroll dentro del marco) */}
+              <DiagramaCICD />
             </div>
           </FadeIn>
         </div>
