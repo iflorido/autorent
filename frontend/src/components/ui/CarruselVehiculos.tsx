@@ -17,7 +17,8 @@ export default function CarruselVehiculos({ vehiculos, titulo = "Nuestros vehíc
     <div className="relative">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-medium">{titulo}</h2>
-        <div className="flex gap-2">
+        {/* Flechas solo en escritorio (en móvil la lista es vertical) */}
+        <div className="hidden md:flex gap-2">
           <button
             onClick={() => desplazar(-1)}
             className="w-9 h-9 rounded-full border border-border-2 flex items-center justify-center hover:bg-surface-2 transition"
@@ -39,13 +40,15 @@ export default function CarruselVehiculos({ vehiculos, titulo = "Nuestros vehíc
         </div>
       </div>
 
+      {/* Móvil: lista vertical, una ficha completa por fila.
+          Escritorio (md+): carrusel horizontal con scroll y snap. */}
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2"
+        className="grid grid-cols-1 gap-5 md:flex md:gap-4 md:overflow-x-auto md:scroll-smooth md:snap-x md:snap-mandatory md:pb-2"
         style={{ scrollbarWidth: "none" }}
       >
         {vehiculos.map((v) => (
-          <div key={v.id} className="snap-start shrink-0 w-[calc(33.333%-11px)] min-w-[260px]">
+          <div key={v.id} className="md:snap-start md:shrink-0 md:w-[calc(33.333%-11px)] md:min-w-[260px]">
             <VehiculoCard v={v} />
           </div>
         ))}

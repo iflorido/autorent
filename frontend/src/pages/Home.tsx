@@ -35,7 +35,7 @@ export default function Home() {
   return (
     <div>
       {/* Hero a pantalla con imagen de fondo */}
-      <section className="relative min-h-[88vh] flex items-center">
+      <section className="relative min-h-[70vh] md:min-h-[88vh] flex items-center">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -44,7 +44,7 @@ export default function Home() {
             backgroundColor: "#0f2433",
           }}
         />
-        <div className="relative max-w-container mx-auto px-6 w-full pt-24 pb-40">
+        <div className="relative max-w-container mx-auto px-6 w-full pt-24 pb-16 md:pb-40">
           <FadeIn>
             <div className="max-w-xl">
               <h1 className="text-white text-4xl md:text-6xl font-medium leading-[1.1]">
@@ -57,7 +57,8 @@ export default function Home() {
           </FadeIn>
         </div>
 
-        <div className="absolute left-0 right-0 bottom-0 translate-y-1/2 z-[20]">
+        {/* Escritorio: buscador flotante sobre el borde inferior del hero. */}
+        <div className="hidden md:block absolute left-0 right-0 bottom-0 translate-y-1/2 z-[20]">
           <div className="max-w-container mx-auto px-6">
             <FadeIn delay={150}>
               <Buscador />
@@ -66,8 +67,15 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Móvil: buscador en flujo normal, justo bajo el hero (sin solaparse). */}
+      <section className="md:hidden max-w-container mx-auto px-6 -mt-8 relative z-[20]">
+        <FadeIn delay={150}>
+          <Buscador />
+        </FadeIn>
+      </section>
+
       {/* Carrusel de vehículos */}
-      <section className="max-w-container mx-auto px-6 pt-28 pb-8">
+      <section className="max-w-container mx-auto px-6 pt-10 md:pt-28 pb-8">
         <FadeIn>
           <CarruselVehiculos vehiculos={vehiculos} />
         </FadeIn>
