@@ -45,7 +45,7 @@ export default function Buscador() {
   }
 
   return (
-    <div className="relative">
+    <div className={`relative ${calOpen ? "z-[999]" : ""}`}>
       <div className="bg-bg-2 rounded-xl shadow-soft p-4 grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
         {/* Recogida */}
         <div className="flex flex-col gap-1">

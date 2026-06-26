@@ -136,23 +136,27 @@ export default function HeroScrollFrames({
       style={{ height: `${alturaScroll * 100}vh` }}
     >
       {/* Lienzo anclado que ocupa la ventana mientras dura el scroll. */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden" style={{ background: "#0f2433" }}>
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-        {/* Velo para legibilidad del texto encima. */}
-        <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(160deg, rgba(15,36,51,0.30), rgba(8,145,178,0.55))" }}
-        />
-        {/* Imagen de respaldo mientras precargan los frames. */}
-        {!listo && (
+      <div className="sticky top-0 h-screen w-full" style={{ background: "#0f2433" }}>
+        {/* El canvas y el velo van en una capa que sí recorta (no afecta al
+            calendario, que se renderiza en la capa de contenido por encima). */}
+        <div className="absolute inset-0 overflow-hidden">
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+          {/* Velo para legibilidad del texto encima. */}
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/images/hero.jpg')" }}
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(160deg, rgba(15,36,51,0.30), rgba(8,145,178,0.55))" }}
           />
-        )}
+          {/* Imagen de respaldo mientras precargan los frames. */}
+          {!listo && (
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: "url('/images/hero.jpg')" }}
+            />
+          )}
+        </div>
 
         {/* Texto del hero + buscador (dentro del área visible, como antes) */}
-        <div className="relative h-full flex flex-col justify-center">
+        <div className="relative z-10 h-full flex flex-col justify-center">
           <div className="max-w-container mx-auto px-6 w-full">
             {children}
           </div>
