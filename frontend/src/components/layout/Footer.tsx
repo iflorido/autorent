@@ -10,7 +10,7 @@ export default function Footer() {
             <img
               src="/images/logo-1181x535px.png"
               alt="AutoRent"
-              className="h-logo-footer w-auto"
+              className="h-9 w-auto"
             />
           </div>
           <p className="text-[13px] text-text-2 leading-relaxed">
@@ -55,8 +55,19 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-border">
-        <div className="max-w-container mx-auto px-6 py-4 text-[12px] text-text-2">
-          © {year} AutoRent — AutomaWorks
+        <div className="max-w-container mx-auto px-6 py-4 text-[12px] text-text-2 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>© {year} AutoRent — AutomaWorks</span>
+          <span>
+            Desarrollado por{" "}
+            <a
+              href="https://iflorido.es"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent font-medium hover:underline"
+            >
+              Ignacio Florido
+            </a>
+          </span>
         </div>
       </div>
     </footer>
