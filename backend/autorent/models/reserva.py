@@ -147,6 +147,9 @@ class Reserva(models.Model):
         max_length=12, blank=True, default="", editable=False,
         verbose_name="Estado doc. notificado",
     )
+    # Control de recordatorios de recogida ya enviados (evita duplicados).
+    recordatorio_48h_enviado = models.BooleanField(default=False, editable=False)
+    recordatorio_24h_enviado = models.BooleanField(default=False, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

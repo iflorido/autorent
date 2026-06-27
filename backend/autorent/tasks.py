@@ -64,3 +64,61 @@ def procesar_telemetria_id(posicion_id):
         return None
     procesar_telemetria(posicion)
     return posicion_id
+
+
+@shared_task
+def limpiar_posiciones_antiguas(dias=30):
+    """Borra las posiciones GPS con más de 'dias' días, para acotar la BD.
+
+    Se ejecuta una vez al día (configurado en Celery Beat).
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Posicion
+
+    limite = timezone.now() - timedelta(days=dias)
+    borradas, _ = Posicion.objects.filter(timestamp__lt=limite).delete()
+    logger.info("Limpieza GPS: %s posiciones eliminadas (> %s días).", borradas, dias)
+    return borradas
+
+
+@shared_task
+def enviar_recordatorios_recogida():
+    """Envía recordatorios a clientes con recogida próxima (48h y 24h antes).
+
+    Se ejecuta periódicamente (p.ej. cada hora). Marca cada recordatorio como
+    enviado para no duplicarlo. Como la recogida es por fecha (sin hora), se
+    interpreta a 2 días y 1 día de antelación respectivamente.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Reserva
+    from .notificaciones import enviar_recordatorio_recogida
+
+    hoy = timezone.now().date()
+    enviados = 0
+
+    # Estados en los que tiene sentido recordar (no canceladas ni finalizadas).
+    activas = Reserva.objects.filter(
+        estado__in=[Reserva.Estado.CONFIRMADA, Reserva.Estado.DOCUMENTACION,
+                    Reserva.Estado.PENDIENTE],
+    )
+
+    # 48h antes ~ recogida dentro de 2 días.
+    for r in activas.filter(fecha_inicio=hoy + timedelta(days=2),
+                            recordatorio_48h_enviado=False):
+        if enviar_recordatorio_recogida(r, 48):
+            r.recordatorio_48h_enviado = True
+            r.save(update_fields=["recordatorio_48h_enviado"])
+            enviados += 1
+
+    # 24h antes ~ recogida dentro de 1 día.
+    for r in activas.filter(fecha_inicio=hoy + timedelta(days=1),
+                            recordatorio_24h_enviado=False):
+        if enviar_recordatorio_recogida(r, 24):
+            r.recordatorio_24h_enviado = True
+            r.save(update_fields=["recordatorio_24h_enviado"])
+            enviados += 1
+
+    logger.info("Recordatorios de recogida enviados: %s", enviados)
+    return enviados

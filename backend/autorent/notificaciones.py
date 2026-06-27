@@ -560,3 +560,58 @@ def enviar_contrato_cliente(reserva):
     except Exception as exc:  # noqa: BLE001
         logger.error("Fallo enviando contrato de %s: %s", reserva.localizador, exc)
         return False
+
+
+def enviar_recordatorio_recogida(reserva, horas):
+    """Recordatorio al cliente de su próxima recogida (48h o 24h antes)."""
+    from core.models import EmailConfig
+    site = _site_config()
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    nombre_empresa = site.nombre or "AutoRent"
+
+    asunto = f"Tu recogida es pronto — reserva {reserva.localizador}"
+    texto = (
+        f"Hola {reserva.cliente.nombre},\n\n"
+        f"Te recordamos que tu recogida está prevista para el {reserva.fecha_inicio} "
+        f"(en aproximadamente {horas} horas).\n\n"
+        f"Vehículo: {reserva.vehiculo.nombre}\n"
+        f"Recogida: {reserva.fecha_inicio}\n"
+        f"Devolución: {reserva.fecha_fin}\n\n"
+        f"Recuerda traer tu documentación original y una tarjeta de crédito válida a "
+        f"nombre del conductor titular para la fianza.\n\n"
+        f"¡Te esperamos! {nombre_empresa}."
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#0891b2">Tu recogida es pronto</h2>
+      <p>Hola {escape(reserva.cliente.nombre)},</p>
+      <p>Te recordamos que tu recogida está prevista para
+         <strong>{reserva.fecha_inicio}</strong> (en aproximadamente {horas} horas).</p>
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+        <tr><td style="padding:6px 0;color:#4b5c78">Vehículo</td>
+            <td style="text-align:right"><strong>{escape(reserva.vehiculo.nombre)}</strong></td></tr>
+        <tr><td style="padding:6px 0;color:#4b5c78">Recogida</td>
+            <td style="text-align:right">{reserva.fecha_inicio}</td></tr>
+        <tr><td style="padding:6px 0;color:#4b5c78">Devolución</td>
+            <td style="text-align:right">{reserva.fecha_fin}</td></tr>
+      </table>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
+        <p style="margin:0;font-size:14px">Recuerda traer tu documentación original y una
+           <strong>tarjeta de crédito</strong> válida a nombre del titular para la fianza.</p>
+      </div>
+      <p style="color:#4b5c78;font-size:14px">¡Te esperamos! {escape(nombre_empresa)}.</p>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(asunto, texto, from_email=remitente,
+                                     to=[reserva.cliente.email], connection=connection)
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo enviando recordatorio de %s: %s", reserva.localizador, exc)
+        return False
