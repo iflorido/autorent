@@ -97,6 +97,46 @@ def _fmt_fecha(f):
     return f.strftime("%d/%m/%Y") if hasattr(f, "strftime") else str(f)
 
 
+def _fmt_fecha_hora(fecha, hora):
+    """'12/06/2026 a las 16:00' si hay hora; '12/06/2026' si no."""
+    base = _fmt_fecha(fecha)
+    if hora and hasattr(hora, "strftime"):
+        return f"{base} a las {hora.strftime('%H:%M')}"
+    return base
+
+
+def _detalle_fuera_horario(reserva):
+    """Devuelve las líneas (etiqueta, importe) del suplemento fuera de horario,
+    separando recogida y entrega. Vacío si no hay suplemento.
+
+    Recalcula por tramo a partir de las horas y sedes, para mostrar a cuál
+    corresponde cada cargo en el contrato.
+    """
+    from decimal import Decimal
+    lineas = []
+    # Recogida.
+    if reserva.hora_recogida and reserva.sede_recogida_id:
+        sede = reserva.sede_recogida
+        if not sede.hora_dentro_de_horario(reserva.fecha_inicio, reserva.hora_recogida):
+            imp = sede.suplemento_fuera_horario or Decimal("0.00")
+            if imp > 0:
+                lineas.append((
+                    f"Recogida fuera de horario ({reserva.hora_recogida.strftime('%H:%M')})",
+                    imp,
+                ))
+    # Entrega.
+    if reserva.hora_entrega and reserva.sede_entrega_id:
+        sede = reserva.sede_entrega
+        if not sede.hora_dentro_de_horario(reserva.fecha_fin, reserva.hora_entrega):
+            imp = sede.suplemento_fuera_horario or Decimal("0.00")
+            if imp > 0:
+                lineas.append((
+                    f"Entrega fuera de horario ({reserva.hora_entrega.strftime('%H:%M')})",
+                    imp,
+                ))
+    return lineas
+
+
 def generar_pdf_contrato(reserva):
     """Genera el PDF del contrato. Devuelve (bytes_pdf, hash_sha256)."""
     from core.models import SiteConfig
@@ -183,8 +223,8 @@ def generar_pdf_contrato(reserva):
         ["Vehículo", v.nombre],
         ["Matrícula", getattr(v, "matricula", "") or "—"],
         ["Categoría", v.get_categoria_display()],
-        ["Recogida", _fmt_fecha(reserva.fecha_inicio)],
-        ["Devolución", f"{_fmt_fecha(reserva.fecha_fin)} ({reserva.num_dias} días)"],
+        ["Recogida", _fmt_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)],
+        ["Devolución", f"{_fmt_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)} ({reserva.num_dias} días)"],
     ]
     tv = Table(filas_v, colWidths=[40 * mm, 130 * mm])
     tv.setStyle(TableStyle([
@@ -202,6 +242,11 @@ def generar_pdf_contrato(reserva):
     filas_e.append([f"Alquiler ({reserva.num_dias} días)", f"{reserva.subtotal_vehiculo:.2f} €"])
     for re in reserva.extras_contratados.all():
         filas_e.append([f"Extra: {re.extra.nombre} x{re.cantidad}", f"{re.precio_total:.2f} €"])
+
+    # Suplemento fuera de horario, desglosado por tramo (recogida / entrega).
+    for etiqueta, importe in _detalle_fuera_horario(reserva):
+        filas_e.append([etiqueta, f"{importe:.2f} €"])
+
     filas_e.append(["TOTAL ALQUILER", f"{reserva.total:.2f} €"])
     filas_e.append(["Fianza (depósito, tarjeta de crédito)", f"{reserva.fianza:.2f} €"])
     te = Table(filas_e, colWidths=[130 * mm, 40 * mm])
