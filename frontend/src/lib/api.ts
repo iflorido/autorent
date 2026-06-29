@@ -67,10 +67,22 @@ export async function getPrecio(
   id: number,
   fechaInicio: string,
   fechaFin: string,
+  opciones?: {
+    horaRecogida?: string;
+    horaEntrega?: string;
+    sedeRecogida?: number;
+    sedeEntrega?: number;
+  },
 ): Promise<PrecioCalculo> {
-  const { data } = await api.get<PrecioCalculo>(`/vehiculos/${id}/precio/`, {
-    params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
-  });
+  const params: Record<string, string> = {
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin,
+  };
+  if (opciones?.horaRecogida) params.hora_recogida = opciones.horaRecogida;
+  if (opciones?.horaEntrega) params.hora_entrega = opciones.horaEntrega;
+  if (opciones?.sedeRecogida) params.sede_recogida = String(opciones.sedeRecogida);
+  if (opciones?.sedeEntrega) params.sede_entrega = String(opciones.sedeEntrega);
+  const { data } = await api.get<PrecioCalculo>(`/vehiculos/${id}/precio/`, { params });
   return data;
 }
 
