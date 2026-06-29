@@ -13,19 +13,18 @@ from django.db import migrations
 
 
 def crear_tareas_periodicas(apps, schema_editor):
-    IntervalSchedule = apps.get_model("django_celery_beat", "IntervalSchedule")
     CrontabSchedule = apps.get_model("django_celery_beat", "CrontabSchedule")
     PeriodicTask = apps.get_model("django_celery_beat", "PeriodicTask")
 
     # --- Limpieza GPS: todos los días a las 03:30 ---
-    crontab, _ = CrontabSchedule.objects.get_or_create(
+    crontab_limpieza, _ = CrontabSchedule.objects.get_or_create(
         minute="30", hour="3", day_of_week="*",
         day_of_month="*", month_of_year="*",
     )
     PeriodicTask.objects.get_or_create(
         name="Limpieza de posiciones GPS antiguas",
         defaults={
-            "crontab": crontab,
+            "crontab": crontab_limpieza,
             "task": "autorent.tasks.limpiar_posiciones_antiguas",
             "kwargs": json.dumps({"dias": 30}),
             "enabled": True,
@@ -33,17 +32,18 @@ def crear_tareas_periodicas(apps, schema_editor):
         },
     )
 
-    # --- Recordatorios de recogida: cada hora ---
-    cada_hora, _ = IntervalSchedule.objects.get_or_create(
-        every=1, period="hours",
+    # --- Recordatorios de recogida: todos los días a las 09:00 ---
+    crontab_recordatorios, _ = CrontabSchedule.objects.get_or_create(
+        minute="0", hour="9", day_of_week="*",
+        day_of_month="*", month_of_year="*",
     )
     PeriodicTask.objects.get_or_create(
         name="Recordatorios de recogida (48h y 24h)",
         defaults={
-            "interval": cada_hora,
+            "crontab": crontab_recordatorios,
             "task": "autorent.tasks.enviar_recordatorios_recogida",
             "enabled": True,
-            "description": "Avisa a los clientes 48h y 24h antes de su recogida.",
+            "description": "Avisa a los clientes 48h y 24h antes de su recogida (cada día a las 9:00).",
         },
     )
 
