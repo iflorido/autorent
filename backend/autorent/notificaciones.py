@@ -31,6 +31,42 @@ def _fmt(valor):
         return str(valor)
 
 
+def _supl_txt(reserva):
+    """Línea de suplemento fuera de horario para texto plano (vacía si 0)."""
+    supl = getattr(reserva, "suplemento_fuera_horario", 0) or 0
+    if float(supl) > 0:
+        return f"Suplemento fuera de horario: {_fmt(supl)} €\n"
+    return ""
+
+
+def _html_supl(reserva):
+    """Fila de suplemento fuera de horario para tabla HTML (vacía si 0)."""
+    supl = getattr(reserva, "suplemento_fuera_horario", 0) or 0
+    if float(supl) > 0:
+        return (
+            '<tr><td style="padding:6px 0;color:#4b5c78">Suplemento fuera de horario</td>'
+            f'<td style="text-align:right">{_fmt(supl)} €</td></tr>'
+        )
+    return ""
+
+
+def _fecha_hora(fecha, hora):
+    """'12/06/2026 a las 16:00' si hay hora; '12/06/2026' si no.
+
+    Acepta date y time (o None). Tolerante a formatos.
+    """
+    try:
+        f = fecha.strftime("%d/%m/%Y")
+    except (AttributeError, ValueError):
+        f = str(fecha)
+    if hora:
+        try:
+            return f"{f} a las {hora.strftime('%H:%M')}"
+        except (AttributeError, ValueError):
+            return f
+    return f
+
+
 def enviar_correos_reserva(reserva, token_subida=None):
     """Envía el correo de confirmación al cliente y el aviso a la empresa.
 
@@ -141,10 +177,11 @@ def _email_cliente(reserva, site, token_subida=None):
         f"Hola {reserva.cliente.nombre},\n\n"
         f"Hemos registrado tu reserva con el localizador {reserva.localizador}.\n\n"
         f"Vehículo: {reserva.vehiculo.nombre}\n"
-        f"Recogida: {reserva.fecha_inicio}\n"
-        f"Devolución: {reserva.fecha_fin} ({reserva.num_dias} días)\n"
+        f"Recogida: {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}\n"
+        f"Devolución: {_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)} ({reserva.num_dias} días)\n"
         f"Subtotal vehículo: {_fmt(reserva.subtotal_vehiculo)} €"
         f"{extras_txt}\n"
+        f"{_supl_txt(reserva)}"
         f"Total alquiler: {_fmt(reserva.total)} €\n"
         f"Fianza (depósito): {_fmt(reserva.fianza)} €\n"
         "\nIMPORTANTE — FIANZA: el depósito de garantía se retiene en el momento de la "
@@ -164,8 +201,11 @@ def _email_cliente(reserva, site, token_subida=None):
       <table style="width:100%;border-collapse:collapse;margin:16px 0">
         <tr><td style="padding:6px 0;color:#4b5c78">Vehículo</td>
             <td style="text-align:right"><strong>{escape(reserva.vehiculo.nombre)}</strong></td></tr>
-        <tr><td style="padding:6px 0;color:#4b5c78">Fechas</td>
-            <td style="text-align:right">{reserva.fecha_inicio} → {reserva.fecha_fin} ({reserva.num_dias} días)</td></tr>
+        <tr><td style="padding:6px 0;color:#4b5c78">Recogida</td>
+            <td style="text-align:right">{_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}</td></tr>
+        <tr><td style="padding:6px 0;color:#4b5c78">Devolución</td>
+            <td style="text-align:right">{_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)} ({reserva.num_dias} días)</td></tr>
+        {_html_supl(reserva)}
         <tr><td style="padding:6px 0;color:#4b5c78">Total alquiler</td>
             <td style="text-align:right"><strong>{_fmt(reserva.total)} €</strong></td></tr>
         <tr><td style="padding:6px 0;color:#4b5c78">Fianza (depósito)</td>
@@ -234,7 +274,9 @@ def _email_empresa(reserva, site):
         f"Nueva reserva registrada: {reserva.localizador}\n\n"
         f"Estado: {reserva.get_estado_display()}\n"
         f"Vehículo: {reserva.vehiculo.nombre}\n"
-        f"Fechas: {reserva.fecha_inicio} → {reserva.fecha_fin} ({reserva.num_dias} días)\n"
+        f"Recogida: {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}\n"
+        f"Devolución: {_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)} ({reserva.num_dias} días)\n"
+        f"{_supl_txt(reserva)}"
         f"Total: {_fmt(reserva.total)} € | Fianza: {_fmt(reserva.fianza)} €\n"
         f"Método de pago: {reserva.get_metodo_pago_display()}\n\n"
         f"Cliente:\n"
@@ -253,7 +295,9 @@ def _email_empresa(reserva, site):
          {escape(c.email)} · {escape(c.telefono)}</p>
       <table style="width:100%;border-collapse:collapse;margin:12px 0">
         <tr><td style="padding:5px 0;color:#4b5c78">Vehículo</td><td style="text-align:right">{escape(reserva.vehiculo.nombre)}</td></tr>
-        <tr><td style="padding:5px 0;color:#4b5c78">Fechas</td><td style="text-align:right">{reserva.fecha_inicio} → {reserva.fecha_fin}</td></tr>
+        <tr><td style="padding:5px 0;color:#4b5c78">Recogida</td><td style="text-align:right">{_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}</td></tr>
+        <tr><td style="padding:5px 0;color:#4b5c78">Devolución</td><td style="text-align:right">{_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)}</td></tr>
+        {_html_supl(reserva)}
         <tr><td style="padding:5px 0;color:#4b5c78">Total</td><td style="text-align:right"><strong>{_fmt(reserva.total)} €</strong></td></tr>
         <tr><td style="padding:5px 0;color:#4b5c78">Pago</td><td style="text-align:right">{reserva.get_metodo_pago_display()}</td></tr>
       </table>
@@ -360,7 +404,8 @@ def enviar_correo_documentos_subidos_admin(reserva):
         f"El cliente de la reserva {reserva.localizador} ha subido su documentación.\n\n"
         f"Cliente: {reserva.cliente.nombre_completo} ({reserva.cliente.nif})\n"
         f"Vehículo: {reserva.vehiculo.nombre}\n"
-        f"Fechas: {reserva.fecha_inicio} → {reserva.fecha_fin}\n\n"
+        f"Recogida: {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}\n"
+        f"Devolución: {_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)}\n\n"
         f"Documentos subidos ({n_docs}):\n{docs}\n\n"
         f"Revísala en el panel de administración. Si algo no es válido, usa la acción "
         f"'Rechazar documentación' para pedir al cliente que la vuelva a subir."
@@ -463,8 +508,8 @@ def enviar_correo_documentos_aprobados(reserva):
         f"el vehículo, junto con una tarjeta de crédito válida a nombre del conductor "
         f"titular para la fianza.\n\n"
         f"Vehículo: {reserva.vehiculo.nombre}\n"
-        f"Recogida: {reserva.fecha_inicio}\n"
-        f"Devolución: {reserva.fecha_fin}\n\n"
+        f"Recogida: {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}\n"
+        f"Devolución: {_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)}\n\n"
         f"Gracias por confiar en {nombre_empresa}."
     )
     html = f"""
@@ -526,8 +571,8 @@ def enviar_contrato_cliente(reserva):
         f"Revísalo y consérvalo. Deberás presentar tu documentación original y una "
         f"tarjeta de crédito válida para la fianza al recoger el vehículo.\n\n"
         f"Vehículo: {reserva.vehiculo.nombre}\n"
-        f"Recogida: {reserva.fecha_inicio}\n"
-        f"Devolución: {reserva.fecha_fin}\n\n"
+        f"Recogida: {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}\n"
+        f"Devolución: {_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)}\n\n"
         f"Gracias por confiar en {nombre_empresa}."
     )
     html = f"""
@@ -573,11 +618,11 @@ def enviar_recordatorio_recogida(reserva, horas):
     asunto = f"Tu recogida es pronto — reserva {reserva.localizador}"
     texto = (
         f"Hola {reserva.cliente.nombre},\n\n"
-        f"Te recordamos que tu recogida está prevista para el {reserva.fecha_inicio} "
+        f"Te recordamos que tu recogida está prevista para el {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)} "
         f"(en aproximadamente {horas} horas).\n\n"
         f"Vehículo: {reserva.vehiculo.nombre}\n"
-        f"Recogida: {reserva.fecha_inicio}\n"
-        f"Devolución: {reserva.fecha_fin}\n\n"
+        f"Recogida: {_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}\n"
+        f"Devolución: {_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)}\n\n"
         f"Recuerda traer tu documentación original y una tarjeta de crédito válida a "
         f"nombre del conductor titular para la fianza.\n\n"
         f"¡Te esperamos! {nombre_empresa}."
@@ -587,14 +632,14 @@ def enviar_recordatorio_recogida(reserva, horas):
       <h2 style="color:#0891b2">Tu recogida es pronto</h2>
       <p>Hola {escape(reserva.cliente.nombre)},</p>
       <p>Te recordamos que tu recogida está prevista para
-         <strong>{reserva.fecha_inicio}</strong> (en aproximadamente {horas} horas).</p>
+         <strong>{_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}</strong> (en aproximadamente {horas} horas).</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
         <tr><td style="padding:6px 0;color:#4b5c78">Vehículo</td>
             <td style="text-align:right"><strong>{escape(reserva.vehiculo.nombre)}</strong></td></tr>
         <tr><td style="padding:6px 0;color:#4b5c78">Recogida</td>
-            <td style="text-align:right">{reserva.fecha_inicio}</td></tr>
+            <td style="text-align:right">{_fecha_hora(reserva.fecha_inicio, reserva.hora_recogida)}</td></tr>
         <tr><td style="padding:6px 0;color:#4b5c78">Devolución</td>
-            <td style="text-align:right">{reserva.fecha_fin}</td></tr>
+            <td style="text-align:right">{_fecha_hora(reserva.fecha_fin, reserva.hora_entrega)}</td></tr>
       </table>
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0">
         <p style="margin:0;font-size:14px">Recuerda traer tu documentación original y una
