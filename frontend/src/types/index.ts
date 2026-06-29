@@ -1,5 +1,12 @@
 // Tipos que reflejan los serializers del backend (autorent/serializers.py)
 
+export interface FranjaHoraria {
+  dia_semana: number;
+  dia_semana_display: string;
+  hora_apertura: string;
+  hora_cierre: string;
+}
+
 export interface Sede {
   id: number;
   nombre: string;
@@ -14,6 +21,8 @@ export interface Sede {
   telefono: string;
   email: string;
   horario: string;
+  suplemento_fuera_horario: string;
+  franjas: FranjaHoraria[];
 }
 
 export interface Extra {
@@ -76,6 +85,8 @@ export interface PrecioCalculo {
   num_dias: number;
   precio_dia_base: string;
   subtotal_vehiculo: string;
+  suplemento_fuera_horario?: string;
+  suplemento_detalle?: { recogida_fuera: boolean; entrega_fuera: boolean };
   fianza: string;
 }
 
@@ -123,6 +134,8 @@ export interface CrearReservaPayload {
   vehiculo_id: number;
   fecha_inicio: string;
   fecha_fin: string;
+  hora_recogida?: string | null;
+  hora_entrega?: string | null;
   sede_recogida_id?: number | null;
   sede_entrega_id?: number | null;
   metodo_pago: "transferencia" | "tarjeta" | "efectivo";

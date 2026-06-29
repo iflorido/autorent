@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom"
 import { getVehiculo, getVehiculos, getPrecio } from "@/lib/api";
 import type { Extra, PrecioCalculo, VehiculoDetail, VehiculoList } from "@/types";
 import { formatoCorto, toISODate } from "@/lib/fechas";
+import { horaDentroDeHorario } from "@/lib/horarios";
 import CarruselVehiculos from "@/components/ui/CarruselVehiculos";
 import FadeIn from "@/components/ui/FadeIn";
 import CalendarioRango from "@/components/ui/CalendarioRango";
@@ -21,6 +22,12 @@ export default function Vehiculo() {
     searchParams.get("fecha_fin") ? new Date(searchParams.get("fecha_fin")!) : null,
   );
   const [calOpen, setCalOpen] = useState(false);
+  const [horaRecogida, setHoraRecogida] = useState<string>(
+    searchParams.get("hora_recogida") || "",
+  );
+  const [horaEntrega, setHoraEntrega] = useState<string>(
+    searchParams.get("hora_entrega") || "",
+  );
   const [precio, setPrecio] = useState<PrecioCalculo | null>(null);
   const [calculandoPrecio, setCalculandoPrecio] = useState(false);
 
@@ -48,11 +55,18 @@ export default function Vehiculo() {
       return;
     }
     setCalculandoPrecio(true);
-    getPrecio(vehiculo.id, toISODate(inicio), toISODate(fin))
+    // La sede del vehículo es la de recogida y entrega (de momento la misma).
+    const sedeId = vehiculo.sede?.id;
+    getPrecio(vehiculo.id, toISODate(inicio), toISODate(fin), {
+      horaRecogida: horaRecogida || undefined,
+      horaEntrega: horaEntrega || undefined,
+      sedeRecogida: sedeId,
+      sedeEntrega: sedeId,
+    })
       .then(setPrecio)
       .catch(() => setPrecio(null))
       .finally(() => setCalculandoPrecio(false));
-  }, [vehiculo, inicio, fin]);
+  }, [vehiculo, inicio, fin, horaRecogida, horaEntrega]);
 
   const fotos = vehiculo?.fotos ?? [];
   const fotoPrincipal = useMemo(() => fotos[fotoActiva] ?? fotos[0], [fotos, fotoActiva]);
@@ -84,7 +98,21 @@ export default function Vehiculo() {
 
   const totalExtras = extrasCalculados.reduce((s, x) => s + x.subtotal, 0);
   const subtotalVehiculo = precio ? parseFloat(precio.subtotal_vehiculo) : 0;
-  const totalAlquiler = subtotalVehiculo + totalExtras;
+
+  // ¿Las horas elegidas caen fuera del horario de la sede? (aviso en vivo)
+  const recogidaFuera = !!(
+    vehiculo?.sede && inicio && horaRecogida &&
+    !horaDentroDeHorario(vehiculo.sede, inicio, horaRecogida)
+  );
+  const entregaFuera = !!(
+    vehiculo?.sede && fin && horaEntrega &&
+    !horaDentroDeHorario(vehiculo.sede, fin, horaEntrega)
+  );
+  // Suplemento calculado por el servidor (fuente de verdad).
+  const suplemento = precio?.suplemento_fuera_horario
+    ? parseFloat(precio.suplemento_fuera_horario)
+    : 0;
+  const totalAlquiler = subtotalVehiculo + totalExtras + suplemento;
 
   if (!vehiculo) {
     return <div className="pt-28 max-w-container mx-auto px-6 py-20 text-text-2">Cargando…</div>;
@@ -247,6 +275,44 @@ export default function Vehiculo() {
                 )}
               </div>
 
+              {/* Horas de recogida y entrega */}
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] uppercase tracking-wide text-text-2 font-medium">
+                    Hora recogida
+                  </label>
+                  <input
+                    type="time"
+                    value={horaRecogida}
+                    onChange={(e) => setHoraRecogida(e.target.value)}
+                    className="w-full mt-1 h-10 px-3 border border-border-2 rounded-lg text-sm bg-bg-2"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wide text-text-2 font-medium">
+                    Hora entrega
+                  </label>
+                  <input
+                    type="time"
+                    value={horaEntrega}
+                    onChange={(e) => setHoraEntrega(e.target.value)}
+                    className="w-full mt-1 h-10 px-3 border border-border-2 rounded-lg text-sm bg-bg-2"
+                  />
+                </div>
+              </div>
+
+              {/* Aviso de fuera de horario (en vivo) */}
+              {vehiculo.sede && (recogidaFuera || entregaFuera) && (
+                <div className="mt-3 text-[12px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2 leading-snug">
+                  {recogidaFuera && entregaFuera
+                    ? "La recogida y la entrega están fuera del horario de la sede."
+                    : recogidaFuera
+                    ? "La recogida está fuera del horario de la sede."
+                    : "La entrega está fuera del horario de la sede."}{" "}
+                  Se aplicará un suplemento de {vehiculo.sede.suplemento_fuera_horario} € por cada tramo fuera de horario.
+                </div>
+              )}
+
               {/* Desglose de precio */}
               <div className="mt-5 border-t border-border pt-4">
                 {!inicio || !fin ? (
@@ -275,6 +341,13 @@ export default function Vehiculo() {
                         <span className="whitespace-nowrap">{fmt(subtotal)} €</span>
                       </div>
                     ))}
+
+                    {suplemento > 0 && (
+                      <div className="flex justify-between text-text-2">
+                        <span>Suplemento fuera de horario</span>
+                        <span>{fmt(suplemento)} €</span>
+                      </div>
+                    )}
 
                     <div className="flex justify-between text-text-2">
                       <span>Fianza (depósito)</span>
@@ -306,6 +379,8 @@ export default function Vehiculo() {
                   const params = new URLSearchParams();
                   params.set("fecha_inicio", toISODate(inicio));
                   params.set("fecha_fin", toISODate(fin));
+                  if (horaRecogida) params.set("hora_recogida", horaRecogida);
+                  if (horaEntrega) params.set("hora_entrega", horaEntrega);
                   if (extrasSel.size > 0) {
                     params.set("extras", Array.from(extrasSel).join(","));
                   }

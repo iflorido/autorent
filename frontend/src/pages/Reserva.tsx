@@ -49,6 +49,8 @@ export default function Reserva() {
 
   const fechaInicio = searchParams.get("fecha_inicio") || "";
   const fechaFin = searchParams.get("fecha_fin") || "";
+  const horaRecogida = searchParams.get("hora_recogida") || "";
+  const horaEntrega = searchParams.get("hora_entrega") || "";
   const extrasIds = useMemo(() => {
     const raw = searchParams.get("extras");
     return raw ? raw.split(",").map(Number).filter(Boolean) : [];
@@ -74,8 +76,14 @@ export default function Reserva() {
 
   useEffect(() => {
     if (!vehiculo || !fechaInicio || !fechaFin) return;
-    getPrecio(vehiculo.id, fechaInicio, fechaFin).then(setPrecio).catch(() => {});
-  }, [vehiculo, fechaInicio, fechaFin]);
+    const sedeId = vehiculo.sede?.id;
+    getPrecio(vehiculo.id, fechaInicio, fechaFin, {
+      horaRecogida: horaRecogida || undefined,
+      horaEntrega: horaEntrega || undefined,
+      sedeRecogida: sedeId,
+      sedeEntrega: sedeId,
+    }).then(setPrecio).catch(() => {});
+  }, [vehiculo, fechaInicio, fechaFin, horaRecogida, horaEntrega]);
 
   // Extras elegidos con su cálculo para el resumen.
   const extrasElegidos = useMemo(() => {
@@ -172,10 +180,15 @@ export default function Reserva() {
 
     setEnviando(true);
     try {
+      const sedeId = vehiculo.sede?.id ?? null;
       const creada = await crearReserva({
         vehiculo_id: vehiculo.id,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        hora_recogida: horaRecogida || null,
+        hora_entrega: horaEntrega || null,
+        sede_recogida_id: sedeId,
+        sede_entrega_id: sedeId,
         metodo_pago: metodoPago,
         cliente: clienteLimpio,
         extras,

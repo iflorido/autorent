@@ -308,6 +308,8 @@ def crear_reserva(request):
                 vehiculo=vehiculo,
                 fecha_inicio=fi,
                 fecha_fin=ff,
+                hora_recogida=datos.get("hora_recogida"),
+                hora_entrega=datos.get("hora_entrega"),
                 sede_recogida=sedes.get("sede_recogida"),
                 sede_entrega=sedes.get("sede_entrega"),
                 estado=Reserva.Estado.PENDIENTE,

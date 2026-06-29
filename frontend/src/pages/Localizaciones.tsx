@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import BuscadorSeccion from "@/components/ui/BuscadorSeccion";
 import FadeIn from "@/components/ui/FadeIn";
 import { getSedes } from "@/lib/api";
+import { horarioPorDia } from "@/lib/horarios";
 import { useHeroOscuro } from "@/hooks/useHeroOscuro";
 import type { Sede } from "@/types";
 
@@ -53,6 +54,31 @@ export default function Localizaciones() {
                     </p>
                     {s.telefono && <p className="text-[13px] text-text-2 mt-2">Tel: {s.telefono}</p>}
                     {s.horario && <p className="text-[13px] text-text-2 mt-1 whitespace-pre-line">{s.horario}</p>}
+
+                    {/* Horario comercial por día (franjas configuradas) */}
+                    {s.franjas && s.franjas.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-[11px] uppercase tracking-wide text-text-2 font-medium mb-1">
+                          Horario
+                        </p>
+                        <ul className="text-[13px] text-text-2 space-y-0.5">
+                          {horarioPorDia(s).map((h) => (
+                            <li key={h.dia} className="flex justify-between gap-4">
+                              <span>{h.dia}</span>
+                              <span className={h.franjas === "Cerrado" ? "text-text-2/60" : ""}>
+                                {h.franjas}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        {parseFloat(s.suplemento_fuera_horario) > 0 && (
+                          <p className="text-[12px] text-text-2 mt-2 leading-snug">
+                            Recogida o entrega fuera de este horario: suplemento de{" "}
+                            {s.suplemento_fuera_horario} €.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <MapaSede sede={s} />

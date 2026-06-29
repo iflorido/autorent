@@ -11,20 +11,30 @@ Pensados para el frontend React:
 """
 from rest_framework import serializers
 
-from core.models import Sede
+from core.models import Sede, FranjaHorariaSede
 from .models import (
     Cliente, Extra, FotoVehiculo, RangoPrecio, Reserva,
     ReservaExtra, TemporadaPrecio, Vehiculo,
 )
 
 
+class FranjaHorariaSerializer(serializers.ModelSerializer):
+    dia_semana_display = serializers.CharField(source="get_dia_semana_display", read_only=True)
+
+    class Meta:
+        model = FranjaHorariaSede
+        fields = ["dia_semana", "dia_semana_display", "hora_apertura", "hora_cierre"]
+
+
 class SedeSerializer(serializers.ModelSerializer):
+    franjas = FranjaHorariaSerializer(many=True, read_only=True)
+
     class Meta:
         model = Sede
         fields = [
             "id", "nombre", "slug", "direccion", "poblacion", "cp",
             "provincia", "pais", "latitud", "longitud", "telefono",
-            "email", "horario",
+            "email", "horario", "suplemento_fuera_horario", "franjas",
         ]
 
 
@@ -171,6 +181,8 @@ class CrearReservaSerializer(serializers.Serializer):
     vehiculo_id = serializers.IntegerField()
     fecha_inicio = serializers.DateField()
     fecha_fin = serializers.DateField()
+    hora_recogida = serializers.TimeField(required=False, allow_null=True)
+    hora_entrega = serializers.TimeField(required=False, allow_null=True)
     sede_recogida_id = serializers.IntegerField(required=False, allow_null=True)
     sede_entrega_id = serializers.IntegerField(required=False, allow_null=True)
     metodo_pago = serializers.ChoiceField(
