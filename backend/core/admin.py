@@ -13,7 +13,7 @@ from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from .models import EmailConfig, FrontendConfig, FRONTEND_DEFAULTS, Sede, SiteConfig
+from .models import EmailConfig, FranjaHorariaSede, FrontendConfig, FRONTEND_DEFAULTS, Sede, SiteConfig
 
 
 @admin.register(SiteConfig)
@@ -176,17 +176,29 @@ class EmailConfigAdmin(admin.ModelAdmin):
         return HttpResponseRedirect(url_cambio)
 
 
+class FranjaHorariaSedeInline(admin.TabularInline):
+    model = FranjaHorariaSede
+    extra = 0
+    fields = ("dia_semana", "hora_apertura", "hora_cierre")
+
+
 @admin.register(Sede)
 class SedeAdmin(admin.ModelAdmin):
     list_display = ("nombre", "poblacion", "provincia", "telefono", "activa", "orden")
     list_filter = ("activa", "provincia")
     search_fields = ("nombre", "poblacion", "direccion")
     prepopulated_fields = {"slug": ("nombre",)}
+    inlines = [FranjaHorariaSedeInline]
     fieldsets = (
         ("Identificación", {"fields": ("nombre", "slug", "activa", "orden")}),
         ("Dirección", {"fields": ("direccion", "poblacion", "cp", "provincia", "pais")}),
         ("Geolocalización", {"fields": ("latitud", "longitud")}),
         ("Contacto", {"fields": ("telefono", "email", "horario")}),
+        ("Horario fuera de comercial", {
+            "fields": ("suplemento_fuera_horario",),
+            "description": "Define las franjas horarias abajo. El suplemento se "
+                           "aplica si el cliente elige una hora fuera de ellas.",
+        }),
     )
 
 

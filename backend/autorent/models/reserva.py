@@ -102,6 +102,8 @@ class Reserva(models.Model):
 
     fecha_inicio = models.DateField(verbose_name="Fecha de recogida")
     fecha_fin = models.DateField(verbose_name="Fecha de devolución")
+    hora_recogida = models.TimeField(blank=True, null=True, verbose_name="Hora de recogida")
+    hora_entrega = models.TimeField(blank=True, null=True, verbose_name="Hora de entrega")
 
     sede_recogida = models.ForeignKey(
         "core.Sede", on_delete=models.PROTECT, blank=True, null=True,
@@ -110,6 +112,11 @@ class Reserva(models.Model):
     sede_entrega = models.ForeignKey(
         "core.Sede", on_delete=models.PROTECT, blank=True, null=True,
         related_name="reservas_entrega", verbose_name="Sede de entrega",
+    )
+    # Suplementos por recogida/entrega fuera del horario comercial (congelados).
+    suplemento_fuera_horario = models.DecimalField(
+        max_digits=7, decimal_places=2, default=0,
+        verbose_name="Suplemento fuera de horario (€)",
     )
 
     estado = models.CharField(
@@ -197,14 +204,39 @@ class Reserva(models.Model):
             extras_total += re.precio_total
         self.subtotal_extras = extras_total.quantize(Decimal("0.01"))
 
-        self.total = (self.subtotal_vehiculo + self.subtotal_extras).quantize(Decimal("0.01"))
+        # Suplemento por recogida/entrega fuera del horario comercial.
+        self.suplemento_fuera_horario = self.calcular_suplemento_fuera_horario()
+
+        self.total = (
+            self.subtotal_vehiculo + self.subtotal_extras + self.suplemento_fuera_horario
+        ).quantize(Decimal("0.01"))
 
         if guardar:
             self.save(update_fields=[
                 "num_dias", "precio_dia_base", "subtotal_vehiculo",
-                "subtotal_extras", "fianza", "total",
+                "subtotal_extras", "suplemento_fuera_horario", "fianza", "total",
             ])
         return self.total
+
+    def calcular_suplemento_fuera_horario(self):
+        """Suma de suplementos si la recogida y/o entrega caen fuera de horario.
+
+        Cada tramo (recogida, entrega) se valida contra el horario de SU sede.
+        Si la hora está fuera de las franjas de esa sede, se suma el suplemento
+        propio de esa sede. Recogida y entrega son independientes.
+        """
+        total = Decimal("0.00")
+        # Recogida.
+        if self.hora_recogida and self.sede_recogida_id:
+            sede = self.sede_recogida
+            if not sede.hora_dentro_de_horario(self.fecha_inicio, self.hora_recogida):
+                total += sede.suplemento_fuera_horario or Decimal("0.00")
+        # Entrega.
+        if self.hora_entrega and self.sede_entrega_id:
+            sede = self.sede_entrega
+            if not sede.hora_dentro_de_horario(self.fecha_fin, self.hora_entrega):
+                total += sede.suplemento_fuera_horario or Decimal("0.00")
+        return Decimal(total).quantize(Decimal("0.01"))
 
     def estado_documentacion(self):
         """Estado global de la documentación de la reserva.

@@ -142,6 +142,14 @@ class Sede(models.Model):
     email = models.EmailField(blank=True, verbose_name="Email")
     horario = models.TextField(blank=True, verbose_name="Horario", help_text="Texto libre.")
 
+    # Suplemento por recogida/entrega fuera del horario comercial de esta sede.
+    suplemento_fuera_horario = models.DecimalField(
+        max_digits=7, decimal_places=2, default=0,
+        verbose_name="Suplemento fuera de horario (€)",
+        help_text="Se aplica automáticamente si la hora elegida cae fuera de las "
+                  "franjas horarias de la sede. 0 = no se permite/cobra.",
+    )
+
     orden = models.PositiveSmallIntegerField(default=0, verbose_name="Orden")
 
     class Meta:
@@ -151,6 +159,51 @@ class Sede(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def hora_dentro_de_horario(self, fecha, hora):
+        """¿La 'hora' de un día concreto cae dentro de alguna franja de la sede?
+
+        Si la sede no tiene franjas definidas para ese día de la semana, se
+        considera FUERA de horario (no abre ese día). Devuelve True/False.
+        """
+        dia = fecha.weekday()  # 0 = lunes ... 6 = domingo
+        franjas = self.franjas.filter(dia_semana=dia)
+        for f in franjas:
+            if f.hora_apertura <= hora <= f.hora_cierre:
+                return True
+        return False
+
+
+class FranjaHorariaSede(models.Model):
+    """Una franja de horario comercial de una sede, por día de la semana.
+
+    Permite horario partido (varias franjas el mismo día) y días distintos.
+    Un día sin franjas se considera cerrado.
+    """
+    class DiaSemana(models.IntegerChoices):
+        LUNES = 0, "Lunes"
+        MARTES = 1, "Martes"
+        MIERCOLES = 2, "Miércoles"
+        JUEVES = 3, "Jueves"
+        VIERNES = 4, "Viernes"
+        SABADO = 5, "Sábado"
+        DOMINGO = 6, "Domingo"
+
+    sede = models.ForeignKey(
+        Sede, on_delete=models.CASCADE, related_name="franjas", verbose_name="Sede",
+    )
+    dia_semana = models.IntegerField(choices=DiaSemana.choices, verbose_name="Día")
+    hora_apertura = models.TimeField(verbose_name="Apertura")
+    hora_cierre = models.TimeField(verbose_name="Cierre")
+
+    class Meta:
+        verbose_name = "Franja horaria"
+        verbose_name_plural = "Franjas horarias"
+        ordering = ["sede", "dia_semana", "hora_apertura"]
+
+    def __str__(self):
+        return (f"{self.sede.nombre} · {self.get_dia_semana_display()} "
+                f"{self.hora_apertura:%H:%M}-{self.hora_cierre:%H:%M}")
 
 
 # Valores por defecto del tema (la paleta "general" de iflorido.es, versión light).

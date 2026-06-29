@@ -125,7 +125,11 @@ def vehiculo_precio(request, pk):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Suplemento fuera de horario (según horas y sedes, si se indican).
+    suplemento, detalle_suplemento = _calcular_suplemento_horario(request, fi, ff)
+
     disponible = vehiculo.esta_disponible(fi, ff)
+    total = calculo["subtotal_vehiculo"] + suplemento
     return Response({
         "vehiculo_id": vehiculo.id,
         "fecha_inicio": fi,
@@ -134,8 +138,54 @@ def vehiculo_precio(request, pk):
         "num_dias": calculo["num_dias"],
         "precio_dia_base": calculo["precio_dia_base"],
         "subtotal_vehiculo": calculo["subtotal_vehiculo"],
+        "suplemento_fuera_horario": suplemento,
+        "suplemento_detalle": detalle_suplemento,
         "fianza": calculo["fianza"],
     })
+
+
+def _parse_hora(valor):
+    """Convierte 'HH:MM' en time, o None."""
+    if not valor:
+        return None
+    from datetime import datetime as _dt
+    for fmt in ("%H:%M", "%H:%M:%S"):
+        try:
+            return _dt.strptime(valor, fmt).time()
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+def _calcular_suplemento_horario(request, fi, ff):
+    """Calcula el suplemento fuera de horario a partir de los parámetros de la
+    petición (horas y sedes de recogida/entrega). Devuelve (importe, detalle)."""
+    from decimal import Decimal
+    from core.models import Sede
+
+    hora_rec = _parse_hora(request.query_params.get("hora_recogida"))
+    hora_ent = _parse_hora(request.query_params.get("hora_entrega"))
+    sede_rec_id = request.query_params.get("sede_recogida")
+    sede_ent_id = request.query_params.get("sede_entrega")
+
+    total = Decimal("0.00")
+    detalle = {"recogida_fuera": False, "entrega_fuera": False}
+
+    def suplemento_de(sede_id, fecha, hora, clave):
+        nonlocal total
+        if not (sede_id and hora):
+            return
+        try:
+            sede = Sede.objects.get(pk=sede_id)
+        except (Sede.DoesNotExist, ValueError, TypeError):
+            return
+        if not sede.hora_dentro_de_horario(fecha, hora):
+            total += sede.suplemento_fuera_horario or Decimal("0.00")
+            detalle[clave] = True
+
+    suplemento_de(sede_rec_id, fi, hora_rec, "recogida_fuera")
+    suplemento_de(sede_ent_id, ff, hora_ent, "entrega_fuera")
+    return total.quantize(Decimal("0.01")), detalle
 
 
 class ExtraListView(ListAPIView):
