@@ -109,7 +109,8 @@ class ReservaAdmin(admin.ModelAdmin):
     date_hierarchy = "fecha_inicio"
     readonly_fields = (
         "localizador", "num_dias", "precio_dia_base", "subtotal_vehiculo",
-        "subtotal_extras", "total", "created_at", "updated_at",
+        "subtotal_extras", "suplemento_fuera_horario", "total",
+        "created_at", "updated_at",
     )
     inlines = [ReservaExtraInline, ConductorAdicionalInline, DocumentoReservaInline, PagoInline, ContratoReservaInline]
     fieldsets = (
@@ -117,9 +118,14 @@ class ReservaAdmin(admin.ModelAdmin):
             "fields": ("localizador", "cliente", "vehiculo",
                        "fecha_inicio", "fecha_fin", "estado", "metodo_pago"),
         }),
+        ("Recogida y entrega", {
+            "fields": ("hora_recogida", "sede_recogida", "hora_entrega", "sede_entrega"),
+            "description": "Si una hora cae fuera del horario de su sede, al guardar "
+                           "se recalcula el suplemento fuera de horario.",
+        }),
         ("Desglose económico (calculado)", {
             "fields": ("num_dias", "precio_dia_base", "subtotal_vehiculo",
-                       "subtotal_extras", "fianza", "total"),
+                       "subtotal_extras", "suplemento_fuera_horario", "fianza", "total"),
             "description": "Se recalcula automáticamente al guardar.",
         }),
         ("Notas y fechas", {
