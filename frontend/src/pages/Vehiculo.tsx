@@ -8,6 +8,13 @@ import CarruselVehiculos from "@/components/ui/CarruselVehiculos";
 import FadeIn from "@/components/ui/FadeIn";
 import CalendarioRango from "@/components/ui/CalendarioRango";
 
+// Opciones de hora cada 30 minutos (00:00 … 23:30) para los selectores.
+const HORAS = Array.from({ length: 48 }, (_, i) => {
+  const h = String(Math.floor(i / 2)).padStart(2, "0");
+  const m = i % 2 === 0 ? "00" : "30";
+  return `${h}:${m}`;
+});
+
 export default function Vehiculo() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -281,23 +288,31 @@ export default function Vehiculo() {
                   <label className="text-[11px] uppercase tracking-wide text-text-2 font-medium">
                     Hora recogida
                   </label>
-                  <input
-                    type="time"
+                  <select
                     value={horaRecogida}
                     onChange={(e) => setHoraRecogida(e.target.value)}
                     className="w-full mt-1 h-10 px-3 border border-border-2 rounded-lg text-sm bg-bg-2"
-                  />
+                  >
+                    <option value="">Elegir hora</option>
+                    {HORAS.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wide text-text-2 font-medium">
                     Hora entrega
                   </label>
-                  <input
-                    type="time"
+                  <select
                     value={horaEntrega}
                     onChange={(e) => setHoraEntrega(e.target.value)}
                     className="w-full mt-1 h-10 px-3 border border-border-2 rounded-lg text-sm bg-bg-2"
-                  />
+                  >
+                    <option value="">Elegir hora</option>
+                    {HORAS.map((h) => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
