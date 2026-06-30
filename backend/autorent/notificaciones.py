@@ -660,3 +660,58 @@ def enviar_recordatorio_recogida(reserva, horas):
     except Exception as exc:  # noqa: BLE001
         logger.error("Fallo enviando recordatorio de %s: %s", reserva.localizador, exc)
         return False
+
+
+def enviar_mensaje_contacto(nombre, email, telefono, mensaje):
+    """Envía a la empresa el mensaje del formulario de contacto de la web.
+
+    El destinatario es el email de contacto configurado en SiteConfig. Se pone
+    el email del remitente como Reply-To para poder responder directamente.
+    """
+    from core.models import EmailConfig
+    site = _site_config()
+    cfg_email = EmailConfig.load()
+    remitente = _remitente(cfg_email)
+    destino = (site.email or "").strip()
+    if not destino:
+        logger.error("Contacto: SiteConfig.email vacío, no hay destinatario.")
+        return False
+
+    asunto = f"Nuevo mensaje de contacto — {nombre}"
+    cuerpo = (
+        f"Has recibido un mensaje desde el formulario de contacto de la web.\n\n"
+        f"Nombre: {nombre}\n"
+        f"Email: {email}\n"
+        f"Teléfono: {telefono or '—'}\n\n"
+        f"Mensaje:\n{mensaje}\n"
+    )
+    html = f"""
+    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+      <h2 style="color:#0891b2">Nuevo mensaje de contacto</h2>
+      <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px">
+        <tr><td style="padding:5px 0;color:#4b5c78">Nombre</td>
+            <td style="text-align:right"><strong>{escape(nombre)}</strong></td></tr>
+        <tr><td style="padding:5px 0;color:#4b5c78">Email</td>
+            <td style="text-align:right">{escape(email)}</td></tr>
+        <tr><td style="padding:5px 0;color:#4b5c78">Teléfono</td>
+            <td style="text-align:right">{escape(telefono or '—')}</td></tr>
+      </table>
+      <div style="background:#f1f5f9;border-radius:10px;padding:14px;margin-top:8px">
+        <p style="margin:0;font-size:14px;white-space:pre-line">{escape(mensaje)}</p>
+      </div>
+    </div>
+    """
+    try:
+        connection = get_connection(
+            backend="core.backends.ConfiguredEmailBackend", fail_silently=False,
+        )
+        msg = EmailMultiAlternatives(
+            asunto, cuerpo, from_email=remitente, to=[destino],
+            reply_to=[email] if email else None, connection=connection,
+        )
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Fallo enviando mensaje de contacto: %s", exc)
+        return False

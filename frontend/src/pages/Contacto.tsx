@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import FadeIn from "@/components/ui/FadeIn";
 import OficinasCercanas from "@/components/ui/OficinasCercanas";
 import { useHeroOscuro } from "@/hooks/useHeroOscuro";
-import { getSedes } from "@/lib/api";
+import { getSedes, enviarContacto } from "@/lib/api";
 import { EMPRESA } from "@/lib/empresa";
 import type { Sede } from "@/types";
 
@@ -18,6 +18,7 @@ export default function Contacto() {
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [form, setForm] = useState<FormData>({ nombre: "", email: "", telefono: "", mensaje: "" });
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { getSedes().then(setSedes).catch(() => {}); }, []);
@@ -26,7 +27,7 @@ export default function Contacto() {
     setForm((f) => ({ ...f, [campo]: valor }));
   }
 
-  function enviar() {
+  async function enviar() {
     setError(null);
     if (!form.nombre.trim() || !form.email.trim() || !form.mensaje.trim()) {
       setError("Por favor, completa nombre, email y mensaje.");
@@ -36,9 +37,20 @@ export default function Contacto() {
       setError("El email no parece válido.");
       return;
     }
-    // TODO: conectar con el endpoint de contacto del backend cuando exista.
-    // Por ahora simulamos el envío correcto.
-    setEnviado(true);
+    setEnviando(true);
+    try {
+      await enviarContacto({
+        nombre: form.nombre.trim(),
+        email: form.email.trim(),
+        telefono: form.telefono.trim(),
+        mensaje: form.mensaje.trim(),
+      });
+      setEnviado(true);
+    } catch {
+      setError("No se pudo enviar el mensaje. Inténtalo de nuevo en unos minutos.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -112,9 +124,10 @@ export default function Contacto() {
 
                     <button
                       onClick={enviar}
-                      className="h-11 px-6 bg-accent text-white rounded-lg font-medium hover:opacity-90 transition"
+                      disabled={enviando}
+                      className="h-11 px-6 bg-accent text-white rounded-lg font-medium hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Enviar mensaje
+                      {enviando ? "Enviando…" : "Enviar mensaje"}
                     </button>
                     <p className="text-[12px] text-text-2">
                       Al enviar aceptas nuestra{" "}

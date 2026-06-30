@@ -664,3 +664,34 @@ def categorias_vehiculo(request):
         {"slug": c.slug, "nombre": c.nombre}
         for c in cats
     ])
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def contacto(request):
+    """Recibe el formulario de contacto de la web y lo envía por correo a la
+    empresa (al email configurado en SiteConfig).
+
+    POST /api/contacto/  { nombre, email, telefono, mensaje }
+    """
+    from .notificaciones import enviar_mensaje_contacto
+
+    datos = request.data
+    nombre = (datos.get("nombre") or "").strip()
+    email = (datos.get("email") or "").strip()
+    telefono = (datos.get("telefono") or "").strip()
+    mensaje = (datos.get("mensaje") or "").strip()
+
+    if not nombre or not email or not mensaje:
+        return Response(
+            {"detail": "Nombre, email y mensaje son obligatorios."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    enviado = enviar_mensaje_contacto(nombre, email, telefono, mensaje)
+    if not enviado:
+        return Response(
+            {"detail": "No se pudo enviar el mensaje. Inténtalo más tarde."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    return Response({"ok": True})

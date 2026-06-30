@@ -45,6 +45,17 @@ export async function getCategorias(): Promise<CategoriaItem[]> {
   return data;
 }
 
+export interface ContactoPayload {
+  nombre: string;
+  email: string;
+  telefono?: string;
+  mensaje: string;
+}
+
+export async function enviarContacto(payload: ContactoPayload): Promise<void> {
+  await api.post("/contacto/", payload);
+}
+
 export async function getVehiculos(
   filtros: VehiculoFiltros = {},
 ): Promise<VehiculoList[]> {
